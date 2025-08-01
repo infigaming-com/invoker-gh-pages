@@ -630,7 +630,7 @@ type GameResult struct {
     BetAmount     float64               // 下注金额
     WinAmount     float64               // 赢得金额（0表示输）
     IsWin         bool                  // 是否获胜
-    GameOutcome   json.RawMessage       `gorm:"type:jsonb"`   // 游戏结果详情（JSON）
+    GameOutcome   json.RawMessage       `gorm:"type:jsonb"`   // 游戏结果详情（存储为JSON，API返回结构化类型）
     ProvablyFair  json.RawMessage       `gorm:"type:jsonb"`   // 可证明公平信息（JSON）
 }
 ```

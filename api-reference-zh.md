@@ -279,6 +279,12 @@ Provider API 是为游戏聚合器（GA）设计的标准化接口，允许赌�
 |----------|--------|--------|------|
 | INITIALIZATION_COMPLETE | `d` 字段（JSON字符串） | `p` 字段（结构化对象） | 初始化完成通知 |
 | GAME_CONFIG | `d` 字段（JSON字符串） | 保持不变 | 其他游戏配置（向后兼容） |
+| gameOutcome | JSON字符串 | 结构化对象（oneof） | 游戏结果数据 |
+
+**游戏结果结构化类型**：
+- `gameOutcome` 字段现在使用 `oneof` 类型，根据不同游戏返回对应的结构化数据
+- 支持的类型：`diceOutcome`、`minesOutcome`、`blackjackOutcome`
+- 每种游戏结果都有明确的字段定义，提供更好的类型安全性
 
 **迁移说明**：
 - 新格式提供类型安全和更好的开发体验
@@ -535,7 +541,13 @@ enum EventType {
       "betAmount": "100.50000000",
       "winAmount": "201.00000000",
       "isWin": true,
-      "gameOutcome": "{\"roll\": 75.23, \"target\": 50, \"isRollOver\": true}",
+      "gameOutcome": {
+        "diceOutcome": {
+          "roll": "75.23",
+          "target": "50.00",
+          "isRollOver": true
+        }
+      },
       "multiplier": "2.00000000",
       "timestamp": 1640995200000
     },
@@ -804,7 +816,13 @@ interface DiceGameConfig {
       "winAmount": "1000.00000000",
       "isWin": true,
       "multiplier": "2.00000000",
-      "gameOutcome": "{\"roll\": 25.45}",
+      "gameOutcome": {
+        "diceOutcome": {
+          "roll": "25.45",
+          "target": "50.00",
+          "isRollOver": false
+        }
+      },
       "timestamp": 1640995300000
     }
   }
