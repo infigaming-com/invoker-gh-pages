@@ -21,6 +21,15 @@
 ### 当前使用指南
 请使用已实现的 API 接口进行集成。统一 Game API 仍在规划中，实现时间待定。
 
+## API 认证方式总览
+
+不同的 API 使用不同的认证机制：
+
+1. **Provider API** (`/api/provider/v1/*`) - HMAC-SHA256 签名认证
+2. **Game API** (`/api/game/v1/*`) - JWT Bearer token 认证 
+3. **WebSocket API** (`/v1/ws`) - 通过 LOGIN 消息使用 JWT token
+4. **Aggregator API** (`/api/aggregator/v1/*`) - 主密钥认证（管理接口）
+
 ## 目录
 
 ### 已实现接口
@@ -1039,6 +1048,12 @@ socket.on('message', (data) => {
 Authorization: Bearer <token>
 ```
 
+**JWT 认证说明** ✅ *已实现*:
+- Game API 端点（`/api/game/v1/*`）使用 JWT Bearer token 认证
+- Token 从 Authorization header 中提取：`Authorization: Bearer <token>`
+- JWT 中包含用户信息（player_id、user_id、aggregator_id 等）
+- 用户信息自动从 token 中提取，无需在请求参数中传递敏感信息
+
 ### 认证端点
 
 #### 刷新Token
@@ -1797,6 +1812,98 @@ X-API-Key: <integration-api-key>
 **GET** `/bets/{bet_id}`
 
 **响应**: 与历史记录中的单个下注相同
+
+### 历史记录 API ✅ *已实现*
+
+#### 查询玩家投注历史
+**POST** `/v1/bets/page`
+
+查询当前玩家的投注历史记录。支持分页、时间范围筛选和游戏筛选。
+
+**认证要求**:
+- 必须提供有效的 JWT token
+- 玩家ID优先从 JWT token 中提取
+- 如果 JWT 中没有 player_id 或为空，则使用请求参数中的 player_id
+
+**请求体**:
+```json
+{
+  "playerId": "player123",       // 可选，JWT中的player_id优先
+  "gameId": "inhousegame:dice",  // 可选，筛选特定游戏
+  "currency": "USD",             // 可选，筛选特定币种
+  "startTime": "2025-01-01T00:00:00Z",  // 可选，开始时间
+  "endTime": "2025-01-31T23:59:59Z",    // 可选，结束时间
+  "page": {
+    "page": 1,       // 页码，默认1
+    "pageSize": 20   // 每页数量，默认20，最大100
+  }
+}
+```
+
+**响应**:
+```json
+{
+  "bets": [
+    {
+      "bet": {
+        "betId": "dice_20250101_001",
+        "sessionId": "",
+        "betAmount": {
+          "amount": "10.00",
+          "currency": "USD"
+        },
+        "winAmount": {
+          "amount": "19.80",
+          "currency": "USD"
+        },
+        "isWin": true,
+        "multiplier": "1.98x",
+        "createdAt": "2025-01-01T10:30:00Z"
+      },
+      "gameId": "inhousegame:dice",
+      "gameName": "Dice",
+      "gameData": {
+        "target": 50.5,
+        "rollResult": 45.23,
+        "isRollOver": true
+      },
+      "provablyFair": {
+        "serverSeed": "revealed_server_seed",
+        "clientSeed": "player_chosen_seed",
+        "nonce": 123
+      }
+    }
+  ],
+  "page": {
+    "page": 1,
+    "pageSize": 20,
+    "totalCount": 156,
+    "totalPages": 8
+  },
+  "summary": {
+    "totalBets": 156,
+    "totalWagered": {
+      "amount": "1560.00",
+      "currency": "USD"
+    },
+    "totalWon": {
+      "amount": "1432.50",
+      "currency": "USD"
+    },
+    "netProfit": {
+      "amount": "-127.50",
+      "currency": "USD"
+    },
+    "winRate": 45.5
+  }
+}
+```
+
+**注意事项**:
+- player_id 参数是可选的，JWT token 中的 player_id 优先级更高
+- 如果 JWT 中没有 player_id，才会使用请求参数中的 player_id
+- 时间筛选使用 ISO 8601 格式
+- 汇总统计（summary）基于当前筛选条件计算，不是全部历史
 
 ## 错误代码
 
