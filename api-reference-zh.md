@@ -392,7 +392,7 @@ Authorization: Bearer <current_token>
 ```json
 {
   "i": "msg_123456",
-  "t": "PLACE_BET_REQUEST",
+  "t": "PLACE_BET",
   "p": { ... }
 }
 ```
@@ -465,9 +465,9 @@ enum EventType {
   "t": "LOGIN_RESPONSE",
   "p": {
     "success": true,
-    "user_id": "12345",
-    "game_id": "inhousegame:dice",
-    "session_id": "sess_abc123"
+    "userId": "12345",
+    "gameId": "inhousegame:dice",
+    "sessionId": "sess_abc123"
   }
 }
 ```
@@ -510,19 +510,18 @@ enum EventType {
   "t": "PLACE_BET",
   "p": {
     "amount": "100.50000000",
-    "currency": "USD",
-    "game_params": {
+    "gameParams": {
       "dice": {
         "target": 50,
-        "is_roll_over": true
+        "isRollOver": true
       }
     },
-    "client_seed": "my-lucky-seed-123"
+    "clientSeed": "my-lucky-seed-123"
   }
 }
 ```
 
-> ⚠️ **更新说明**: `game_type` 字段已被移除，游戏类型现在通过 `game_params` 的结构自动识别。
+> ⚠️ **更新说明**: `game_type` 字段已被移除，游戏类型现在通过 `gameParams` 的结构自动识别。
 
 **完整响应消息**:
 ```json
@@ -530,22 +529,23 @@ enum EventType {
   "i": "msg_123457",
   "t": "PLACE_BET_RESPONSE",
   "p": {
-    "bet_id": "bet_789",
-    "game_result": {
-      "game_id": "game_456",
-      "bet_amount": "100.50000000",
-      "win_amount": "201.00000000",
-      "is_win": true,
-      "game_outcome": "{\"roll\": 75.23, \"target\": 50, \"is_roll_over\": true}",
+    "betId": "bet_789",
+    "gameResult": {
+      "gameId": "game_456",
+      "betAmount": "100.50000000",
+      "winAmount": "201.00000000",
+      "isWin": true,
+      "gameOutcome": "{\"roll\": 75.23, \"target\": 50, \"isRollOver\": true}",
       "multiplier": "2.00000000",
       "timestamp": 1640995200000
     },
-    "provably_fair": {
-      "client_seed": "my-lucky-seed-123",
-      "server_seed": "server-seed-revealed",
-      "hashed_server_seed": "hash-of-server-seed",
+    "balance": "900.00000000",
+    "provablyFair": {
+      "clientSeed": "my-lucky-seed-123",
+      "serverSeed": "server-seed-revealed",
+      "hashedServerSeed": "hash-of-server-seed",
       "nonce": 42,
-      "combined_seed": "combined-seed-value"
+      "combinedSeed": "combined-seed-value"
     }
   }
 }
@@ -561,9 +561,7 @@ enum EventType {
 {
   "i": "msg_123458",
   "t": "GET_GAME_STATE",
-  "p": {
-    "game_type": "dice"
-  }
+  "p": {}
 }
 ```
 
@@ -573,12 +571,12 @@ enum EventType {
   "i": "msg_123459",
   "t": "GET_GAME_STATE_RESPONSE",
   "p": {
-    "game_type": "dice",
-    "game_state": "{\"last_bet\": {...}, \"statistics\": {...}}",
-    "server_seed_info": {
-      "hashed_server_seed": "current-hash",
-      "current_nonce": 43,
-      "created_at": 1640990000000
+    "balance": "1000.00000000",
+    "gameState": "{\"lastBet\": {...}, \"statistics\": {...}}",
+    "serverSeedInfo": {
+      "hashedServerSeed": "current-hash",
+      "currentNonce": 43,
+      "createdAt": 1640990000000
     }
   }
 }
@@ -597,7 +595,7 @@ enum EventType {
   "i": "msg_config_123",
   "t": "GET_GAME_CONFIG",
   "p": {
-    "game_id": "inhousegame:dice"  // 指定游戏ID
+    "gameId": "inhousegame:dice"  // 指定游戏ID
   }
 }
 ```
@@ -608,7 +606,7 @@ enum EventType {
   "i": "msg_config_123",
   "t": "GET_GAME_CONFIG",
   "p": {
-    "all_games": true  // 获取所有活跃游戏
+    "allGames": true  // 获取所有活跃游戏
   }
 }
 ```
@@ -621,33 +619,32 @@ enum EventType {
   "p": {
     "configs": [
       {
-        "game_id": "inhousegame:dice",
-        "game_type": "instant",
-        "dice_config": {  // Dice游戏结构化配置
+        "gameId": "inhousegame:dice",
+        "config": {  // Dice游戏结构化配置
           "id": 2000003,
-          "game_id": "inhousegame:dice",
-          "game_name": "Dice",
+          "gameId": "inhousegame:dice",
+          "gameName": "Dice",
           "category": "instant",
           "status": "active",
           "description": "Classic dice game with adjustable win probability",
           "thumbnail": "/games/dice/thumbnail.png",
-          "bet_info": [
+          "betInfo": [
             {
               "currency": "USD",
-              "currency_type": "fiat",  // 币种类型
-              "default_bet": 0.2,
-              "min_bet": 0.1,
-              "max_bet": 400000
+              "currencyType": "fiat",  // 币种类型
+              "defaultBet": 0.2,
+              "minBet": 0.1,
+              "maxBet": 400000
             }
           ],
-          "min_bet": 0.0000001,
-          "max_bet": 20000000000,
+          "minBet": 0.0000001,
+          "maxBet": 20000000000,
           "rtp": 97.0,
           "features": ["provably_fair", "instant_play", "auto_play"],
-          "default_rtp": "97%",
-          "bet_range": "0.0000001,20000000000",
-          "max_reward_multiplier": 5000000000
-          // ... 更多配置字段（rtp_options, new_user, old_user, total_control）
+          "defaultRtp": "97%",
+          "betRange": "0.0000001,20000000000",
+          "maxRewardMultiplier": 5000000000
+          // ... 更多配置字段（rtpOptions, newUser, oldUser, totalControl）
         }
       }
     ]
@@ -670,11 +667,11 @@ enum EventType {
 
 **配置格式说明**: 
 - 所有游戏配置都采用结构化格式，无需 JSON 解析
-- Dice 游戏：使用 `dice_config` 字段，包含 `DiceGameConfigMessage` 结构
+- Dice 游戏：使用 `config` 字段，包含 `DiceGameConfigMessage` 结构
 - 其他游戏类型（Mines、Blackjack）：将在后续版本添加相应的结构化配置
-- 客户端应根据 `game_type` 字段判断使用哪个配置字段
+- 客户端应根据 `gameId` 字段判断使用哪个配置字段
 
-**Dice 游戏配置结构（dice_config 字段内容）**:
+**Dice 游戏配置结构（config 字段内容）**:
 ```typescript
 interface DiceGameConfig {
   // 基本信息
@@ -768,8 +765,8 @@ interface DiceGameConfig {
   "i": "msg_123460",
   "t": "SUBSCRIBE",
   "p": {
-    "event_types": ["game_result", "live_stats", "jackpot_update"],
-    "filters": "{\"game_types\": [\"dice\", \"crash\"]}"
+    "eventTypes": ["EVENT_TYPE_GAME_RESULT", "EVENT_TYPE_LIVE_STATS", "EVENT_TYPE_JACKPOT"],
+    "filters": "{\"gameTypes\": [\"dice\", \"crash\"]}"
   }
 }
 ```
@@ -780,8 +777,8 @@ interface DiceGameConfig {
   "i": "msg_123461",
   "t": "SUBSCRIBE_RESPONSE",
   "p": {
-    "subscription_id": "sub_123",
-    "event_types": ["game_result", "live_stats", "jackpot_update"],
+    "subscriptionId": "sub_123",
+    "eventTypes": ["EVENT_TYPE_GAME_RESULT", "EVENT_TYPE_LIVE_STATS", "EVENT_TYPE_JACKPOT"],
     "success": true,
     "message": "成功订阅事件"
   }
@@ -797,13 +794,17 @@ interface DiceGameConfig {
   "i": "msg_123462",
   "t": "GAME_EVENT",
   "p": {
-    "event_type": "GAME_RESULT",
-    "game_type": "dice",
-    "data": {
-      "bet_id": "bet_999",
-      "amount": "500.00000000",
-      "win_amount": "1000.00000000",
+    "eventId": "evt_999",
+    "eventType": "EVENT_TYPE_GAME_RESULT",
+    "timestamp": 1640995300000,
+    "gameResult": {
+      "gameId": "inhousegame:dice",
+      "playerId": "player_123",
+      "betAmount": "500.00000000",
+      "winAmount": "1000.00000000",
+      "isWin": true,
       "multiplier": "2.00000000",
+      "gameOutcome": "{\"roll\": 25.45}",
       "timestamp": 1640995300000
     }
   }
@@ -850,39 +851,39 @@ message BetActivityBatch {
   "i": "msg_event_123",
   "t": "GAME_EVENT",
   "p": {
-    "gameEvent": {
-      "eventId": "evt_789",
-      "eventType": "EVENT_TYPE_BET_ACTIVITY_BATCH",
-      "timestamp": 1640995300000,
-      "betActivityBatch": {
-        "activities": [
-          {
-            "maskedPlayerId": "pla***567",
-            "betAmount": "100.00000000",
-            "currency": "USD",
-            "potentialWin": "200.00000000",
-            "multiplier": "2.00000000",
-            "timestamp": 1640995295000,
-            "countryCode": "US"
-          },
-          {
-            "maskedPlayerId": "abc***123",
-            "betAmount": "50.00000000",
-            "currency": "USD",
-            "potentialWin": "500.00000000",
-            "multiplier": "10.00000000",
-            "isWin": true,
-            "winAmount": "500.00000000",
-            "timestamp": 1640995298000,
-            "countryCode": "CN"
-          }
-        ],
-        "totalCount": 15,
-        "sampledCount": 2,
-        "periodStart": 1640995290000,
-        "periodEnd": 1640995300000,
-        "sequence": 42
-      }
+    "eventId": "evt_789",
+    "eventType": "EVENT_TYPE_BET_ACTIVITY_BATCH",
+    "timestamp": 1640995300000,
+    "betActivityBatch": {
+      "activities": [
+        {
+          "maskedPlayerId": "pla***567",
+          "betAmount": "100.00000000",
+          "currency": "USD",
+          "potentialWin": "200.00000000",
+          "multiplier": "2.00000000",
+          "timestamp": 1640995295000,
+          "countryCode": "US",
+          "gameId": "inhousegame:dice"
+        },
+        {
+          "maskedPlayerId": "abc***123",
+          "betAmount": "50.00000000",
+          "currency": "USD",
+          "potentialWin": "500.00000000",
+          "multiplier": "10.00000000",
+          "isWin": true,
+          "winAmount": "500.00000000",
+          "timestamp": 1640995298000,
+          "countryCode": "CN",
+          "gameId": "inhousegame:dice"
+        }
+      ],
+      "totalCount": 15,
+      "sampledCount": 2,
+      "periodStart": 1640995290000,
+      "periodEnd": 1640995300000,
+      "sequence": 42
     }
   }
 }
@@ -904,8 +905,8 @@ message BetActivityBatch {
 // 监听投注活动事件
 socket.on('message', (data) => {
   if (data.t === 'GAME_EVENT' && 
-      data.p.gameEvent.eventType === 'EVENT_TYPE_BET_ACTIVITY_BATCH') {
-    const batch = data.p.gameEvent.betActivityBatch;
+      data.p.eventType === 'EVENT_TYPE_BET_ACTIVITY_BATCH') {
+    const batch = data.p.betActivityBatch;
     
     // 处理每个投注活动
     batch.activities.forEach(activity => {
@@ -931,8 +932,9 @@ socket.on('message', (data) => {
   "t": "ERROR",
   "p": {
     "code": "INSUFFICIENT_BALANCE",
-    "msg": "您的余额不足以进行此下注",
-    "request_id": "msg_123456"
+    "message": "您的余额不足以进行此下注",
+    "details": "{\"required\": \"100.00\", \"available\": \"50.00\"}",
+    "requestId": "msg_123456"
   }
 }
 ```
