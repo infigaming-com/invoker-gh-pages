@@ -5,6 +5,11 @@
 2. [API 设计原则](#api-设计原则)
 3. [Provider API 设计](#provider-api-设计) ✅ 新增
 4. [WebSocket API 设计](#websocket-api-设计)
+   - [连接生命周期](#连接生命周期)
+   - [消息格式规范](#消息格式规范)
+   - [连接初始化流程](#连接初始化流程)
+   - [余额同步机制](#余额同步机制) 🚧 开发中
+   - [事件类型枚举设计](#事件类型枚举设计)
 5. [HTTP/gRPC API 设计](#httpgrpc-api-设计)
 6. [数据模型](#数据模型)
 7. [游戏会话管理](#游戏会话管理)
@@ -268,6 +273,125 @@ WebSocket 连接建立后，系统会自动执行一系列初始化操作，确�
    - 特性列表：支持的功能（如 provably_fair）
    - 货币支持：从 betInfo 数组中提取支持的货币
    - 高级配置：新老用户差异化设置、总体控制参数等
+
+### 余额同步机制 🚧 *开发中*
+
+v1.0 架构下，余额由聚合器管理，Invoker Server 实现了智能的余额同步机制，确保玩家看到的余额始终是最新的。
+
+#### 设计目标
+
+1. **实时性**：余额变化自动推送到客户端
+2. **性能优化**：减少不必要的聚合器 API 调用
+3. **准确性**：关键操作时确保余额的准确性
+4. **用户体验**：无需手动刷新余额
+
+#### 核心组件
+
+##### 1. BalanceSyncer（余额同步器）
+
+位于 `internal/transport/websocket/balance_syncer.go`，负责管理单个连接的余额同步：
+
+```go
+type BalanceSyncer struct {
+    conn         *Connection      // WebSocket 连接
+    clientPool   aggregator.ClientPool  // 聚合器客户端池
+    timer        *time.Timer      // 可重置的定时器
+    interval     time.Duration    // 同步间隔（默认30秒）
+    lastBalance  string          // 缓存的余额
+    lastCurrency string          // 缓存的币种
+    // ...
+}
+```
+
+**特性**：
+- **定时同步**：每30秒自动从聚合器获取最新余额
+- **强制同步**：在关键操作时立即同步
+- **智能定时器**：每次同步后重置定时器，避免重复同步
+- **最小间隔保护**：防止频繁同步（最小2秒间隔）
+
+##### 2. 同步触发机制
+
+```
+登录认证 ──> 初始同步 ──> 启动定时器（30秒）
+                            │
+                            ├─> 定时触发 ──> 同步余额 ──> 重置定时器
+                            │
+                            ├─> 下注前 ──> 强制同步 ──> 重置定时器
+                            │
+                            └─> 结算后 ──> 强制同步 ──> 重置定时器
+```
+
+##### 3. 余额变化检测
+
+同步时会比较新旧余额，仅在变化时发送通知：
+
+```go
+if balanceChanged && oldBalance != "" {  // 首次同步不发送
+    // 发送 BALANCE_UPDATE 事件
+    event := &v1.WebSocketMessage{
+        Type: "BALANCE_UPDATE",
+        P: &v1.WebSocketMessage_BalanceUpdateEvent{
+            BalanceUpdateEvent: &v1.BalanceUpdateEvent{
+                Balance:   balanceStr,
+                Currency:  currency,
+                Timestamp: time.Now().Unix(),
+            },
+        },
+    }
+}
+```
+
+#### 时序示例
+
+```
+00:00 - 用户登录，初始同步余额（1000 USD）
+00:30 - 定时同步（余额未变，不发送通知）
+00:45 - 用户下注，强制同步，重置定时器到 01:15
+00:46 - 游戏结算，余额变为 950，发送 BALANCE_UPDATE
+01:15 - 下次定时同步（而不是 01:00）
+```
+
+#### 与其他组件的集成
+
+1. **WebSocket Connection**
+   - 认证成功后自动创建 BalanceSyncer
+   - 连接关闭时自动停止同步
+
+2. **游戏适配器（如 DiceWebSocketAdapter）**
+   - 下注前：`conn.GetBalanceSyncer().ForceSync()`
+   - 结算后：异步触发同步
+
+3. **GET_BALANCE 处理器**
+   - 优先从 BalanceSyncer 缓存读取
+   - 缓存未命中时才查询聚合器
+
+#### 配置选项
+
+```yaml
+# 未来可配置化（当前硬编码）
+websocket:
+  balance_sync:
+    enabled: true
+    interval: 30s      # 定时同步间隔
+    min_interval: 2s   # 最小同步间隔
+```
+
+#### 注意事项
+
+1. **架构限制**
+   - Invoker 不处理余额的增减，仅同步显示
+   - 所有余额变更通过聚合器 API 完成
+   - 下注验证最终由聚合器执行
+
+2. **性能考虑**
+   - 10K 连接 × 30秒 = 333 QPS（分散的）
+   - 通过缓存和智能重置减少 API 调用
+   - 未来可根据用户活跃度动态调整间隔
+
+3. **错误处理**
+   - 同步失败不影响游戏进行
+   - 记录错误日志但不中断连接
+   - 下次同步时自动重试
 
 ### 事件类型枚举设计 ✅ *已实现*
 

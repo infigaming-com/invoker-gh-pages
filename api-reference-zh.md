@@ -289,6 +289,7 @@ Provider API 是为游戏聚合器（GA）设计的标准化接口，允许赌�
 | INITIALIZATION_COMPLETE | `d` 字段（JSON字符串） | `p` 字段（结构化对象） | 初始化完成通知 |
 | GAME_CONFIG | `d` 字段（JSON字符串） | 保持不变 | 其他游戏配置（向后兼容） |
 | gameOutcome | JSON字符串 | 结构化对象（oneof） | 游戏结果数据 |
+| BALANCE_UPDATE | - | `p` 字段（结构化对象） | 余额更新通知 ✅ *新增* |
 
 **游戏结果结构化类型**：
 - `gameOutcome` 字段现在使用 `oneof` 类型，根据不同游戏返回对应的结构化数据
@@ -438,6 +439,7 @@ enum EventType {
   EVENT_TYPE_BET_ACTIVITY = 7;          // 单个投注活动
   EVENT_TYPE_BET_ACTIVITY_BATCH = 8;    // 批量投注活动
   EVENT_TYPE_LIVE_STATS = 9;            // 实时统计
+  EVENT_TYPE_BALANCE_UPDATE = 10;       // 余额更新通知 ✅ *新增*
 }
 ```
 
@@ -450,8 +452,11 @@ enum EventType {
 | EVENT_TYPE_BIG_WIN | 5 | 大额获胜通知 | ❌ 否 |
 | EVENT_TYPE_JACKPOT | 6 | 累积奖池中奖 | ❌ 否 |
 | EVENT_TYPE_LIVE_STATS | 9 | 实时统计更新 | ❌ 否 |
+| EVENT_TYPE_BALANCE_UPDATE | 10 | 余额变化通知 | ✅ 是* |
 
-**注意**：EVENT_TYPE_BET_ACTIVITY_BATCH 是唯一自动订阅的事件类型，所有客户端连接后自动接收。
+**注意**：
+- EVENT_TYPE_BET_ACTIVITY_BATCH：所有客户端连接后自动接收
+- EVENT_TYPE_BALANCE_UPDATE*：认证后自动推送，无需手动订阅
 
 ### 7. 消息类型
 
@@ -1021,7 +1026,68 @@ socket.on('message', (data) => {
 - balance 字段为字符串格式，保留 8 位小数
 - 支持查询与会话币种不同的其他币种余额
 
-#### 9. 心跳保活
+#### 9. 余额更新通知 ✅ *新增*
+**类型**: `BALANCE_UPDATE`
+
+**描述**: 服务器主动推送余额变化通知，当系统检测到玩家余额发生变化时自动推送
+
+**推送消息示例**:
+```json
+{
+  "i": "msg_balance_update_123",
+  "t": "BALANCE_UPDATE",
+  "p": {
+    "balance": "950.00000000",
+    "currency": "USD",
+    "timestamp": 1640995300000
+  }
+}
+```
+
+**BalanceUpdateEvent 结构**:
+```protobuf
+message BalanceUpdateEvent {
+  string balance = 1;    // 更新后的余额（字符串格式，保留8位小数）
+  string currency = 2;   // 货币代码
+  int64 timestamp = 3;   // 更新时间戳（Unix时间戳）
+}
+```
+
+**触发条件**:
+1. **定时同步**: 每30秒自动同步一次余额
+2. **下注前强制同步**: 在玩家下注前触发
+3. **结算后同步**: 游戏结算完成后立即同步
+4. **余额变化检测**: 当检测到余额与缓存不一致时推送
+
+**实现特性**:
+- **智能定时器**: 强制同步会重置定时器，避免重复同步
+- **变化检测**: 只有余额真正发生变化时才推送通知
+- **最小间隔保护**: 两次同步之间至少间隔2秒，防止API过载
+- **自动启动**: 玩家登录成功后自动启动余额同步器
+
+**客户端处理示例**:
+```javascript
+// 监听余额更新事件
+socket.on('message', (data) => {
+  if (data.t === 'BALANCE_UPDATE') {
+    const { balance, currency, timestamp } = data.p;
+    
+    // 更新UI显示的余额
+    updateBalanceDisplay(balance, currency);
+    
+    // 记录更新时间
+    console.log(`Balance updated at ${new Date(timestamp)}: ${balance} ${currency}`);
+  }
+});
+```
+
+**注意事项**:
+- 此事件为服务器主动推送，客户端无需订阅
+- 余额同步依赖聚合器（io）的实时数据
+- 在 v1.0 架构下，余额由聚合器管理，游戏服务器只负责同步和推送
+- 首次同步（如登录后第一次）不会触发推送，避免重复通知
+
+#### 10. 心跳保活
 **机制**: 使用数字 `0` 和 `1` 作为心跳消息
 
 **说明**:
