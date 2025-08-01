@@ -2,23 +2,38 @@
 
 ## 重要说明
 
-⚠️ **API 重构通知**：我们正在将 API 结构从多个独立接口整合为统一的游戏接口。新的 API 设计请参考 [API 迁移指南](../api/migration_guide.md)。
+本文档包含 Invoker Server 的所有 API 接口说明，包括当前已实现的接口和未来规划的接口。
 
-### 新 API 结构（推荐）
-- **Game API** (`/v1/game/*`) - 统一的游戏接口
-- **Aggregator API** (`/v1/aggregator/*`) - 聚合器管理
+### API 实现状态
 
-### 旧 API 结构（将被弃用）
-以下文档描述了当前仍在使用的旧 API 结构，这些接口将在未来版本中被弃用。
+#### ✅ 已实现的 API
+- **Provider API** (`/api/provider/v1/`) - 游戏聚合器接口
+- **WebSocket API** (`wss://dev.hicasino.xyz/v1/ws`) - 实时游戏通信
+- **Aggregator API** (`/api/aggregator/v1/`) - 聚合器管理
+- **游戏前端 API** - Dice、Mines、Blackjack 游戏端点
+
+#### ⚠️ 未来规划（待实现）
+- **统一 Game API** (`/v1/game/*`) - 计划中的统一游戏接口
+  - 目标：将分散的游戏接口整合为统一的服务
+  - 当前状态：设计阶段，尚未实现
+  - 预计收益：简化接口调用，提高开发效率
+
+### 当前使用指南
+请使用已实现的 API 接口进行集成。统一 Game API 仍在规划中，实现时间待定。
 
 ## 目录
-1. [Provider API](#provider-api) ✅ 当前版本
-2. [WebSocket API](#websocket-api)
-3. [游戏前端 API](#游戏前端-api)
-4. [集成 API](#集成-api)
+
+### 已实现接口
+1. [Provider API](#provider-api) ✅ 生产可用
+2. [WebSocket API](#websocket-api) ✅ 生产可用
+3. [游戏前端 API](#游戏前端-api) ✅ 生产可用
+4. [Aggregator API](#aggregator-api) ✅ 生产可用
 5. [错误代码](#错误代码)
-6. [示例代码](#示例代码)
-7. [金额格式说明](#金额格式说明) ✅ 新增
+6. [金额格式说明](#金额格式说明)
+
+### 未来规划
+7. [统一 Game API（设计阶段）](#统一-game-api设计阶段) ⚠️ 待实现
+8. [集成 API（未实现）](#集成-api) ⚠️ 无实现
 
 ## Provider API
 
@@ -1906,7 +1921,179 @@ amountStr := amount.StringFixed(8)
 
 ---
 
+## Aggregator API
+
+### 概述
+Aggregator API 用于管理接入的游戏聚合器，包括创建聚合器、管理 API 密钥、配置 Webhook 等功能。
+
+**基础信息**:
+- **端点**: `https://dev.hicasino.xyz/api/aggregator/v1`
+- **端口**: 8000（与主 HTTP 服务共用）
+- **协议**: HTTP/HTTPS
+- **认证**: 主密钥认证（用于管理操作）
+
+**实现状态**:
+- ✅ 所有 CRUD 操作已实现
+- ✅ API 密钥加密存储
+- ✅ Webhook 配置管理
+- ✅ IP 白名单验证
+
+### 主要功能
+
+1. **创建聚合器**
+2. **更新聚合器配置**
+3. **管理 API 密钥**
+4. **配置 Webhook**
+5. **设置 IP 白名单**
+
+详细的 Aggregator API 文档请参考专门的聚合器集成指南。
+
+## 统一 Game API（设计阶段）
+
+> ⚠️ **注意**：以下为统一 Game API 的设计方案，尚未实现。当前请继续使用 Provider API 和 WebSocket API。
+
+### 设计理念
+
+统一 Game API 旨在将现有的分散接口整合为一个清晰、一致的 API 结构：
+
+- **统一的游戏接口**：所有游戏操作通过统一的端点访问
+- **RESTful 设计**：遵循标准的 REST 原则
+- **清晰的资源模型**：游戏、会话、投注等资源有明确的层次关系
+
+### 计划的 API 结构
+
+```
+/v1/
+├── game/          # 游戏相关接口
+│   ├── games      # 游戏列表和配置
+│   ├── sessions   # 会话管理
+│   ├── bets       # 投注操作
+│   └── history    # 历史记录
+├── aggregator/    # 聚合器管理（已实现）
+└── ws            # WebSocket 连接（已实现）
+```
+
+### 主要接口设计
+
+#### 1. 游戏信息
+
+##### 获取游戏列表
+**GET** `/v1/games`
+
+获取所有可用游戏的列表。
+
+**请求参数**：
+- `category` (可选): 游戏类别筛选
+- `status` (可选): 游戏状态筛选
+
+**响应示例**：
+```json
+{
+  "games": [
+    {
+      "id": "inhousegame:dice",
+      "name": "Dice",
+      "description": "Classic dice game with adjustable win chance",
+      "category": "instant",
+      "status": "active",
+      "thumbnail_url": "/games/dice/thumb.png",
+      "features": ["provably_fair", "instant_play"],
+      "limits": {
+        "currency_limits": [
+          {
+            "currency": "USD",
+            "currency_type": "fiat",
+            "min_bet": "0.10",
+            "max_bet": "10000.00",
+            "default_bet": "1.00"
+          }
+        ]
+      },
+      "rtp": 98.0
+    }
+  ]
+}
+```
+
+##### 获取游戏配置
+**GET** `/v1/games/{game_id}/config`
+
+获取特定游戏的详细配置。
+
+#### 2. 会话管理
+
+##### 创建游戏会话
+**POST** `/v1/sessions`
+
+为玩家创建新的游戏会话。
+
+**请求体**：
+```json
+{
+  "player_id": "player_123",
+  "game_id": "inhousegame:dice",
+  "currency": "USD",
+  "aggregator_id": "casino_xyz",
+  "params": {
+    "language": "zh",
+    "return_url": "https://casino.com/lobby"
+  }
+}
+```
+
+**响应**：
+```json
+{
+  "session_id": "sess_abc123",
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "expires_at": "2024-01-20T18:00:00Z",
+  "expires_in": 7200,
+  "game_url": "https://games.invoker.com/play?token=..."
+}
+```
+
+#### 3. 投注操作
+
+##### 下注
+**POST** `/v1/bets`
+
+执行游戏投注。
+
+**请求体（Dice 示例）**：
+```json
+{
+  "session_id": "sess_abc123",
+  "game_id": "inhousegame:dice",
+  "amount": {
+    "amount": "10.00000000",
+    "currency": "USD"
+  },
+  "client_seed": "my-lucky-seed",
+  "game_params": {
+    "dice": {
+      "target": 50.5,
+      "is_roll_over": true
+    }
+  }
+}
+```
+
+### 迁移计划
+
+1. **第一阶段**：完成 API 设计和原型
+2. **第二阶段**：实现核心功能，与现有 API 并行运行
+3. **第三阶段**：迁移现有客户端到新 API
+4. **第四阶段**：废弃旧 API 接口
+
+### 优势
+
+- **简化集成**：统一的接口设计降低学习成本
+- **更好的扩展性**：便于添加新游戏和功能
+- **标准化**：遵循 RESTful 最佳实践
+- **类型安全**：使用 Protocol Buffers 提供强类型支持
+
 ## 相关文档
 - [详细设计](./detailed-design-zh.md) - 架构和设计原则
 - [序列图](./sequence-diagrams-zh.md) - 可视化流程展示
-- [集成指南](./integration-guide-zh.md) - 分步集成说明
+- [集成指南](others/integration-guide-zh.md) - 分步集成说明
+- [聚合器集成指南](others/aggregator-integration-guide-zh.md) - 聚合器详细接入说明
