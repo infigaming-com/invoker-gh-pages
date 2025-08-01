@@ -9,10 +9,11 @@
 6. [数据模型](#数据模型)
 7. [游戏会话管理](#游戏会话管理)
 8. [用户身份管理](#用户身份管理) ✅ 新增
-9. [认证与授权](#认证与授权)
-10. [错误处理](#错误处理)
-11. [速率限制与节流](#速率限制与节流)
-12. [监控与可观测性](#监控与可观测性)
+9. [JWT 认证中间件](#jwt-认证中间件) ✅ 新增
+10. [认证与授权](#认证与授权)
+11. [错误处理](#错误处理)
+12. [速率限制与节流](#速率限制与节流)
+13. [监控与可观测性](#监控与可观测性)
 
 ## 概述
 
@@ -635,19 +636,28 @@ type GameResult struct {
 }
 ```
 
-#### 服务器种子（ServerSeed）
+#### 服务器种子（ServerSeed） ✅ *更新*
 
 ```go
 // ServerSeed 用于可证明公平机制的服务器种子
 type ServerSeed struct {
-    SeedID       int64     `gorm:"primaryKey;column:seed_id"`
-    UserID       string    `gorm:"column:user_id;type:varchar(255);not null;index"`
-    SeedValue    string    `gorm:"column:seed_value;not null"`          // 服务端种子值
-    SeedHash     string    `gorm:"column:seed_hash;not null"`           // 种子哈希（公开）
-    CurrentNonce int64     `gorm:"column:current_nonce;default:0"`      // 当前nonce值
-    CreatedAt    time.Time `gorm:"column:created_at;autoCreateTime"`
+    SeedID           int64  `gorm:"primaryKey;column:seed_id"`
+    UserID           string `gorm:"column:user_id;type:varchar(255);not null;index"`
+    SeedValue        string `gorm:"column:seed_value;not null"`                        // 服务端种子值
+    SeedHash         string `gorm:"column:seed_hash;not null"`                         // 种子哈希（公开）
+    CurrentNonce     int64  `gorm:"column:current_nonce;default:0"`                    // 当前nonce值
+    IsActive         bool   `gorm:"column:is_active;default:true"`                     // 是否为活跃种子
+    TotalBets        int64  `gorm:"column:total_bets;default:0"`                       // 使用该种子的总投注次数
+    RevealedAt       *int64 `gorm:"column:revealed_at;type:bigint"`                    // 种子揭示时间（Unix时间戳）
+    ReplacedBySeedID *int64 `gorm:"column:replaced_by_seed_id"`                        // 被哪个种子替换
+    CreatedAt        int64  `gorm:"column:created_at;type:bigint;autoCreateTime"`     // 创建时间（Unix时间戳）
 }
 ```
+
+> ✅ **安全升级**（2025年1月）：
+> - 添加种子生命周期管理字段（is_active、total_bets、revealed_at）
+> - 时间字段改为 bigint 类型，与其他表保持一致
+> - 支持种子轮换和安全揭示机制
 
 #### ⚠️ 已废弃的会话模型
 
@@ -1221,13 +1231,15 @@ sequenceDiagram
    - 如果发生唯一键冲突（并发创建），则重新查询
    - 保证最终只有一个用户映射被创建
 
-### 向后兼容性
+### 向后兼容性 ✅ *更新*
 
-系统保持完全的向后兼容：
-1. **API层面**：继续接受外部 player_id
-2. **数据层面**：保留原有 player_id 字段
+系统的向后兼容策略已调整：
+1. **API层面**：继续接受外部 player_id（仅用于创建会话）
+2. **数据层面**：保留原有 player_id 字段（用于审计追踪）
 3. **JWT令牌**：同时包含内部和外部ID
-4. **查询降级**：优先使用内部ID，降级到外部ID
+4. **查询策略**：
+   - **历史查询**：已完全迁移到 UserID，不再支持 player_id 查询（2025年1月）
+   - **会话创建**：仍接受 player_id，自动转换为内部 UserID
 
 ### GameResult 表优化
 
@@ -1258,6 +1270,85 @@ CREATE INDEX idx_game_results_user_created ON game_results(user_id, created_at D
 - 用户偏好设置
 - 成就系统
 - 独立的用户统计
+
+## JWT 认证中间件 ✅ *新增*
+
+### 概述
+
+从 2025年1月起，Game API 引入了 JWT 认证中间件，用于保护敏感的游戏操作接口。这个中间件从 HTTP Authorization header 中提取 Bearer token，验证其有效性，并将用户信息注入到请求上下文中。
+
+### 实现架构
+
+```go
+// JWT 认证中间件
+type JWTAuthMiddleware struct {
+    jwtService *JWTService
+}
+
+// 中间件处理流程
+func (m *JWTAuthMiddleware) Middleware() middleware.Middleware {
+    return func(handler middleware.Handler) middleware.Handler {
+        return func(ctx context.Context, req interface{}) (interface{}, error) {
+            // 1. 从 header 提取 token
+            // 2. 验证 token
+            // 3. 注入用户信息到 context
+            // 4. 继续处理请求
+        }
+    }
+}
+```
+
+### 认证流程
+
+1. **Token 提取**
+   - 从 `Authorization: Bearer <token>` header 提取
+   - 支持标准的 Bearer token 格式
+
+2. **Token 验证**
+   - 验证签名有效性
+   - 检查过期时间
+   - 验证 issuer 和其他 claims
+
+3. **上下文注入**
+   - 将 user_id（内部用户ID）注入到 context
+   - 将 aggregator_id 注入到 context
+   - 其他业务信息也可从 JWT claims 提取
+
+### 应用范围
+
+#### 需要认证的接口
+- `/api/game/v1/history` - 历史记录查询
+- `/api/game/v1/dice/*` - 骰子游戏操作
+- `/api/game/v1/mines/*` - 扫雷游戏操作
+- `/api/game/v1/blackjack/*` - 21点游戏操作
+
+#### 不需要认证的接口
+- `/api/game/v1/games` - 游戏列表（公开信息）
+- `/api/game/v1/config` - 游戏配置（公开信息）
+
+### 与历史查询的集成
+
+HistoryService 已更新为优先从 JWT context 获取用户信息：
+
+```go
+func (s *HistoryService) GetPlayerHistory(ctx context.Context, req *pb.GetPlayerHistoryRequest) (*pb.GetPlayerHistoryResponse, error) {
+    // 1. 尝试从 JWT context 获取 user_id
+    if userID := auth.UserIDFromContext(ctx); userID > 0 {
+        // 使用 JWT 中的 user_id
+    } else if req.UserId > 0 {
+        // 降级到请求参数中的 user_id
+    } else {
+        // 返回错误：需要有效的用户ID
+    }
+}
+```
+
+### 安全优势
+
+1. **数据隔离**：每个用户只能访问自己的数据
+2. **防止篡改**：用户ID从可信的 JWT 中提取，而非请求参数
+3. **统一认证**：所有 Game API 使用相同的认证机制
+4. **审计追踪**：所有操作都有明确的用户身份
 
 ## 认证与授权
 
@@ -1499,6 +1590,109 @@ message HealthCheckResponse {
   map<string, ServingStatus> dependencies = 2;
 }
 ```
+
+## 服务端种子生命周期管理 ✅ *新增*
+
+### 概述
+
+为了增强可证明公平机制的安全性，系统实现了完整的服务端种子生命周期管理。主要目标是防止种子预测攻击，确保游戏结果的真正随机性。
+
+### 核心安全原则
+
+1. **活跃种子不暴露**：活跃的服务端种子原始值永远不会返回给客户端
+2. **延迟揭示**：种子只有在被替换（轮换）后才会揭示原始值
+3. **完整记录**：记录每个种子的使用情况（投注次数、nonce值等）
+
+### 种子状态流转
+
+```mermaid
+stateDiagram-v2
+    [*] --> 活跃: 创建新种子
+    活跃 --> 活跃: 处理投注（更新nonce和统计）
+    活跃 --> 已揭示: 种子轮换
+    已揭示 --> [*]: 供验证使用
+```
+
+### 生命周期管理机制
+
+#### 1. 种子创建
+- 生成随机种子值
+- 计算并存储种子哈希（SHA256）
+- 标记为活跃状态（is_active = true）
+- 初始化统计信息（total_bets = 0, current_nonce = 0）
+
+#### 2. 种子使用
+- 每次投注时更新：
+  - current_nonce++（递增nonce）
+  - total_bets++（投注计数）
+- 使用异步更新减少响应延迟
+
+#### 3. 种子轮换
+- 创建新的活跃种子
+- 将旧种子标记为非活跃（is_active = false）
+- 记录揭示时间（revealed_at）
+- 设置替换关系（replaced_by_seed_id）
+- 返回旧种子的原始值供验证
+
+#### 4. 种子查询
+- 活跃种子：只返回哈希值，不返回原始值
+- 非活跃种子：返回完整信息，包括原始值
+
+### API 行为变化
+
+#### PlaceDiceBet 响应
+```json
+{
+  "provably_fair": {
+    "client_seed": "player-seed",
+    "server_seed": "",  // 活跃种子不返回原始值
+    "hashed_server_seed": "sha256-hash",
+    "nonce": 42,
+    "seed_revealed": false
+  }
+}
+```
+
+#### GetBetHistory 响应
+```json
+{
+  "provably_fair": {
+    "client_seed": "player-seed",
+    "server_seed": "revealed-seed",  // 历史记录中返回已揭示的种子
+    "hashed_server_seed": "sha256-hash",
+    "nonce": 42,
+    "seed_revealed": true
+  }
+}
+```
+
+### 性能优化
+
+1. **异步更新统计**
+   - 投注时异步更新 total_bets 和 current_nonce
+   - 减少主流程的响应时间
+
+2. **索引优化**
+   - user_id + is_active 复合索引
+   - 快速查询用户的活跃种子
+
+3. **ID 生成器**
+   - 使用 Sony Flake 生成种子ID
+   - 避免数据库自增主键的性能瓶颈
+
+### 安全性提升
+
+1. **防止预测攻击**
+   - 攻击者无法获得当前活跃种子的值
+   - 无法预测未来的游戏结果
+
+2. **完整审计追踪**
+   - 每个种子的完整使用历史
+   - 支持事后验证所有游戏结果
+
+3. **灵活的轮换策略**
+   - 支持手动轮换（用户请求）
+   - 可配置自动轮换（如每1000次投注）
 
 ## 游戏赔率计算公式
 

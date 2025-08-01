@@ -11,8 +11,9 @@
 8. [实时投注活动广播流程](#实时投注活动广播流程) ✅ 新增
 9. [错误处理场景](#错误处理场景)
 10. [可证明公平验证](#可证明公平验证)
-11. [集成 API 流程](#集成-api-流程)
-12. [Game Aggregator Provider API 集成](#game-aggregator-provider-api-集成)
+11. [服务端种子轮换流程](#服务端种子轮换流程) ✅ 新增
+12. [集成 API 流程](#集成-api-流程)
+13. [Game Aggregator Provider API 集成](#game-aggregator-provider-api-集成)
 
 ## 玩家认证流程
 
@@ -883,8 +884,12 @@ sequenceDiagram
     Note over GameEngine: 随机数 = 组合 % 10000 / 100
     
     GameEngine->>Database: 保存结果
-    GameEngine->>API: 结果 + 服务器种子
-    API->>Client: 完整结果
+    GameEngine->>Database: 异步更新种子统计
+    Note over Database: current_nonce++<br/>total_bets++
+    
+    GameEngine->>API: 结果（不含种子原始值）
+    API->>Client: 游戏结果
+    Note over Client: server_seed: "" // 活跃种子不返回
     
     Note over Player,Database: 下注后（验证）
     
@@ -893,6 +898,114 @@ sequenceDiagram
     Verifier->>Verifier: 计算结果
     Verifier->>Player: 验证结果
     Note over Player: 结果匹配！✓
+```
+
+## 服务端种子轮换流程 ✅ *新增*
+
+### 种子轮换序列图
+
+```mermaid
+sequenceDiagram
+    participant Player as 玩家
+    participant Client as 客户端
+    participant API as Dice API
+    participant SeedService as 种子服务
+    participant Database as 数据库
+    participant IDGen as ID生成器
+
+    Player->>Client: 请求轮换种子
+    Client->>API: POST /rotate-seed
+    Note over Client: player_id: "player123"
+    
+    API->>SeedService: RotateServerSeed(player_id)
+    
+    SeedService->>Database: 查询当前活跃种子
+    Database->>SeedService: 返回活跃种子
+    Note over SeedService: seed_id: 12345<br/>is_active: true
+    
+    alt 没有活跃种子
+        SeedService->>API: 错误：未找到活跃种子
+        API->>Client: 400 Bad Request
+    else 有活跃种子
+        SeedService->>IDGen: 生成新种子ID
+        IDGen->>SeedService: 新ID: 12346
+        
+        SeedService->>SeedService: 生成新种子值
+        SeedService->>SeedService: 计算新种子哈希
+        
+        SeedService->>Database: 开始事务
+        
+        par 并行操作
+            SeedService->>Database: 创建新种子
+            Note over Database: seed_id: 12346<br/>is_active: true<br/>total_bets: 0
+        and
+            SeedService->>Database: 更新旧种子
+            Note over Database: is_active: false<br/>revealed_at: now()<br/>replaced_by: 12346
+        end
+        
+        SeedService->>Database: 提交事务
+        
+        SeedService->>API: 返回轮换结果
+        API->>Client: 200 OK
+        Note over Client: old_seed: {<br/>  seed_value: "revealed-old-seed",<br/>  total_bets: 42<br/>}<br/>new_seed: {<br/>  seed_hash: "new-hash",<br/>  seed_value: "" // 不返回<br/>}
+    end
+    
+    Client->>Player: 显示轮换结果
+    Note over Player: 旧种子已揭示<br/>可以验证历史游戏
+```
+
+### 种子安全验证流程
+
+```mermaid
+sequenceDiagram
+    participant Player as 玩家
+    participant Client as 客户端
+    participant API as Game API
+    participant SeedService as 种子服务
+    participant GameEngine as 游戏引擎
+    participant Database as 数据库
+
+    Note over Player: 玩家下注时的种子处理
+    
+    Player->>Client: 下注请求
+    Client->>API: PlaceBet
+    
+    API->>SeedService: 获取活跃种子
+    SeedService->>Database: 查询活跃种子
+    Database->>SeedService: 返回种子信息
+    
+    SeedService->>SeedService: 验证种子状态
+    Note over SeedService: 只返回哈希值<br/>不返回原始值
+    
+    SeedService->>GameEngine: 传递种子信息
+    GameEngine->>GameEngine: 生成游戏结果
+    
+    GameEngine->>API: 返回结果
+    API->>Client: 下注响应
+    Note over Client: provably_fair: {<br/>  server_seed: "", // 空<br/>  hashed_server_seed: "hash",<br/>  seed_revealed: false<br/>}
+    
+    Note over Player: 查询历史记录时的种子处理
+    
+    Player->>Client: 查询历史
+    Client->>API: GetBetHistory
+    
+    API->>Database: 查询历史记录
+    Database->>API: 返回历史数据
+    
+    API->>SeedService: 检查种子状态
+    SeedService->>Database: 查询种子信息
+    
+    alt 种子已揭示
+        Database->>SeedService: is_active: false
+        SeedService->>API: 返回完整种子
+        API->>Client: 历史记录（含种子）
+        Note over Client: server_seed: "revealed-value"<br/>seed_revealed: true
+    else 种子仍活跃
+        Database->>SeedService: is_active: true
+        SeedService->>API: 只返回哈希
+        API->>Client: 历史记录（无种子）
+        Note over Client: server_seed: ""<br/>seed_revealed: false
+    end
 ```
 
 ## 集成 API 流程

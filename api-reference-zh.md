@@ -641,7 +641,7 @@ enum EventType {
     "configs": [
       {
         "gameId": "inhousegame:dice",
-        "config": {  // Dice游戏结构化配置
+        "config": {  // 使用 google.protobuf.Any 类型包装的配置
           "id": 2000003,
           "gameId": "inhousegame:dice",
           "gameName": "Dice",
@@ -686,11 +686,12 @@ enum EventType {
 - 配置包含游戏的所有参数，包括基本信息、下注限制、RTP配置等
 - 前端应该根据这些配置初始化游戏界面
 
-**配置格式说明**: 
-- 所有游戏配置都采用结构化格式，无需 JSON 解析
-- Dice 游戏：使用 `config` 字段，包含 `DiceGameConfigMessage` 结构
-- 其他游戏类型（Mines、Blackjack）：将在后续版本添加相应的结构化配置
-- 客户端应根据 `gameId` 字段判断使用哪个配置字段
+**配置格式说明** ✅ *更新*: 
+- 从 2025年1月起，GameConfig 使用 `google.protobuf.Any` 类型包装配置
+- 这使得系统可以支持任意类型的游戏配置，无需预先定义所有游戏类型
+- Dice 游戏：配置被包装为 `DiceGameConfig` 消息
+- 其他游戏类型：可以动态添加新的配置类型，无需修改 proto 定义
+- 客户端需要根据 `gameId` 解析对应的配置类型
 
 **Dice 游戏配置结构（config 字段内容）**:
 ```typescript
@@ -1153,16 +1154,67 @@ Authorization: Bearer <current_token>
     "multiplier": 2.0,
     "provably_fair": {
       "client_seed": "my-lucky-seed",
-      "server_seed": "revealed-server-seed",
+      "server_seed": "",  // 活跃种子不会立即返回原始值
       "hashed_server_seed": "sha256-hash",
-      "nonce": 42
+      "nonce": 42,
+      "seed_revealed": false  // 种子未揭示
     }
   }
 }
 ```
 
+> ⚠️ **安全更新**：为了防止种子预测攻击，活跃的服务端种子不会在投注后立即返回。种子只有在轮换后才会揭示原始值。
+
+#### 轮换服务器种子 ✅ *新增*
+**POST** `/v1/frontend/games/dice/rotate-seed`
+
+轮换当前的服务器种子，创建新种子并揭示旧种子的原始值。
+
+**请求体**:
+```json
+{
+  "player_id": "player123"
+}
+```
+
+**响应**:
+```json
+{
+  "success": true,
+  "data": {
+    "old_seed": {
+      "seed_id": 12345,
+      "seed_value": "revealed-old-seed-value",  // 旧种子的原始值
+      "seed_hash": "sha256-hash-of-old-seed",
+      "total_bets": 42,
+      "last_nonce": 41,
+      "is_active": false,
+      "created_at": 1640990000000,
+      "revealed_at": 1640995200000
+    },
+    "new_seed": {
+      "seed_id": 12346,
+      "seed_value": "",  // 新种子不返回原始值
+      "seed_hash": "sha256-hash-of-new-seed",
+      "total_bets": 0,
+      "last_nonce": 0,
+      "is_active": true,
+      "created_at": 1640995200000,
+      "revealed_at": 0
+    }
+  }
+}
+```
+
+**使用场景**:
+- 玩家希望验证之前的游戏结果
+- 定期轮换种子以增强安全性
+- 在提现前轮换种子
+
 #### 获取下注历史
 **GET** `/games/dice/history/{player_id}?limit=20&offset=0`
+
+> ⚠️ **已废弃**：此接口使用 player_id 查询，建议使用 `/api/game/v1/history` 新接口，通过 JWT 中的 UserID 查询。
 
 **响应**:
 ```json
@@ -1175,7 +1227,7 @@ Authorization: Bearer <current_token>
     "bets": [
       {
         "bet_id": "bet_123",
-            "bet_amount": 100.50,
+        "bet_amount": 100.50,
         "win_amount": 201.00,
         "is_win": true,
         "created_at": 1640995200,
@@ -1185,7 +1237,13 @@ Authorization: Bearer <current_token>
           "is_roll_over": true,
           "multiplier": 2.0
         },
-        "provably_fair": { ... }
+        "provably_fair": {
+          "client_seed": "my-lucky-seed",
+          "server_seed": "revealed-server-seed",  // 只有非活跃种子才返回原始值
+          "hashed_server_seed": "sha256-hash",
+          "nonce": 42,
+          "seed_revealed": true  // 种子已揭示
+        }
       }
     ]
   }
@@ -1822,13 +1880,14 @@ X-API-Key: <integration-api-key>
 
 **认证要求**:
 - 必须提供有效的 JWT token
-- 玩家ID优先从 JWT token 中提取
-- 如果 JWT 中没有 player_id 或为空，则使用请求参数中的 player_id
+- 使用 JWT token 中的 user_id（内部用户ID）进行查询
+- **完全移除** player_id 支持（2025年1月更新）
+
+> ✅ **安全升级**：从 2025年1月起，历史查询 API 已完全迁移到使用内部 UserID，不再接受外部 player_id。这提升了数据隔离性和安全性。
 
 **请求体**:
 ```json
 {
-  "playerId": "player123",       // 可选，JWT中的player_id优先
   "gameId": "inhousegame:dice",  // 可选，筛选特定游戏
   "currency": "USD",             // 可选，筛选特定币种
   "startTime": "2025-01-01T00:00:00Z",  // 可选，开始时间
@@ -1900,8 +1959,8 @@ X-API-Key: <integration-api-key>
 ```
 
 **注意事项**:
-- player_id 参数是可选的，JWT token 中的 player_id 优先级更高
-- 如果 JWT 中没有 player_id，才会使用请求参数中的 player_id
+- 系统使用 JWT token 中的 user_id（内部用户ID）进行查询
+- 使用内部 user_id 确保完全的数据隔离和安全性
 - 时间筛选使用 ISO 8601 格式
 - 汇总统计（summary）基于当前筛选条件计算，不是全部历史
 
