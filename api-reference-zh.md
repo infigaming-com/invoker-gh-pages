@@ -1171,14 +1171,14 @@ Authorization: Bearer <current_token>
 ```
 
 #### 创建服务器种子
-**POST** `/games/dice/server-seed`
+**POST** `/v1/games/dice/server-seed`
 
 **请求体**:
 ```json
-{
-  "player_id": "player123"
-}
+{}
 ```
+
+> 注意：用户信息从 JWT Token 中自动获取，无需在请求体中传递。
 
 **响应**:
 ```json
@@ -1232,16 +1232,16 @@ Authorization: Bearer <current_token>
 > ⚠️ **安全更新**：为了防止种子预测攻击，活跃的服务端种子不会在投注后立即返回。种子只有在轮换后才会揭示原始值。
 
 #### 轮换服务器种子 ✅ *新增*
-**POST** `/v1/frontend/games/dice/rotate-seed`
+**POST** `/v1/games/dice/rotate-seed`
 
 轮换当前的服务器种子，创建新种子并揭示旧种子的原始值。
 
 **请求体**:
 ```json
-{
-  "player_id": "player123"
-}
+{}
 ```
+
+> 注意：用户信息从 JWT Token 中自动获取，无需在请求体中传递。
 
 **响应**:
 ```json
