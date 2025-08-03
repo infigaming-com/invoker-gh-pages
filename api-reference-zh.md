@@ -565,16 +565,11 @@ enum EventType {
       "multiplier": "2.00000000",
       "timestamp": 1640995200000
     },
-    "balance": "900.00000000",
-    "provablyFair": {
-      "clientSeed": "my-lucky-seed-123",
-      "serverSeed": "server-seed-revealed",
-      "hashedServerSeed": "hash-of-server-seed",
-      "nonce": 42,
-      "combinedSeed": "combined-seed-value"
-    }
+    "balance": "900.00000000"
   }
 }
+
+> 💡 **技术说明**：所有布尔类型字段（如 `isWin`）即使值为 `false` 也会在响应中返回。这是通过设置 `protojson.MarshalOptions.EmitUnpopulated = true` 实现的，确保客户端能正确接收所有字段。
 ```
 
 > ✅ **注意**：余额信息不再返回，由聚合器管理。
@@ -1950,6 +1945,8 @@ X-API-Key: <integration-api-key>
 - **完全移除** player_id 支持（2025年1月更新）
 
 > ✅ **安全升级**：从 2025年1月起，历史查询 API 已完全迁移到使用内部 UserID，不再接受外部 player_id。这提升了数据隔离性和安全性。
+
+> 🔐 **公平性验证说明**：历史记录接口返回完整的公平性验证信息（`provablyFair` 字段），包括服务器种子、客户端种子、哈希值等。玩家可以使用这些信息验证游戏结果的公平性。实时投注响应中不再包含这些信息以优化性能。
 
 **请求体**:
 ```json
