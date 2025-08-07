@@ -216,6 +216,7 @@ sequenceDiagram
     Note over EventBus: ✅ 已实现
     
     DiceService->>WSGateway: PLACE_BET_RESPONSE
+    Note over DiceService: v1.1: 响应不含 provably_fair 字段
     WSGateway->>Client: 下注结果
     Client->>Player: 显示结果
     
@@ -273,6 +274,7 @@ sequenceDiagram
     
     BJService->>BJAdapter: 游戏状态
     BJAdapter->>WSGateway: BLACKJACK_PLACE_BET_RESPONSE
+    Note over BJAdapter: v1.1: 响应不含 provably_fair 字段
     WSGateway->>Client: 显示初始牌面
     
     Client->>Player: 显示游戏界面
@@ -455,6 +457,7 @@ sequenceDiagram
     MinesService->>MinesAdapter: 初始游戏状态
     
     MinesAdapter->>WSGateway: MINES_PLACE_BET_RESPONSE
+    Note over MinesAdapter: v1.1: 响应不含 provably_fair 字段
     WSGateway->>Client: 游戏开始
     
     Client->>Player: 显示空白网格
@@ -648,6 +651,43 @@ sequenceDiagram
     EventBus->>SubscriptionManager: 路由事件
     SubscriptionManager->>WSGateway: 投递给客户端2
     WSGateway->>Client2: LIVE_STATS_EVENT
+```
+
+## 余额更新推送流程 ✅ 新增
+
+```mermaid
+sequenceDiagram
+    participant GA as 游戏聚合器
+    participant ProviderAPI as Provider API
+    participant BalanceService as 余额服务
+    participant EventBus as 事件总线
+    participant WSGateway as WS网关
+    participant Client as 客户端
+    participant Player as 玩家
+
+    Note over GA,Player: v1.1 新增自动余额推送
+
+    GA->>ProviderAPI: 余额变更通知
+    Note over GA: 玩家下注/赢奖后
+    
+    ProviderAPI->>BalanceService: 更新余额缓存
+    BalanceService->>BalanceService: 清除旧缓存
+    
+    BalanceService->>EventBus: 发布 BALANCE_UPDATE 事件
+    Note over EventBus: 事件内容：<br/>player_id<br/>new_balance<br/>currency
+    
+    EventBus->>WSGateway: 路由到玩家连接
+    WSGateway->>WSGateway: 查找玩家连接
+    
+    alt 玩家在线
+        WSGateway->>Client: BALANCE_UPDATE 消息
+        Note over Client: {<br/>  type: "BALANCE_UPDATE",<br/>  balance: "1050.00",<br/>  currency: "USD"<br/>}
+        Client->>Player: 更新余额显示
+        Note over Player: 实时看到余额变化
+    else 玩家离线
+        WSGateway->>WSGateway: 跳过推送
+        Note over WSGateway: 玩家重连时<br/>会获取最新余额
+    end
 ```
 
 ## 实时投注活动广播流程
@@ -1135,13 +1175,13 @@ sequenceDiagram
     GameEngine->>Database: 创建游戏记录
     
     SessionService->>Database: 保存会话信息
-    Note over Database: session_id, player_id<br/>game_id, created_at<br/>expires_at, status
+    Note over Database: session_id, player_id<br/>game_id, created_at<br/>expires_at, status<br/>v1.1: 时间戳为毫秒格式
 
     SessionService->>JWTService: 生成JWT token
     JWTService->>SessionService: JWT token
     SessionService->>ProviderAPI: 会话创建成功
     ProviderAPI->>GA: 200 OK
-    Note over GA: Response:<br/>{token, expires_at, expires_in}
+    Note over GA: Response:<br/>{<br/>  token: "eyJ...",<br/>  expiresAt: 1722688014660,<br/>  expiresIn: 7200<br/>}<br/>v1.1: 时间戳为毫秒格式
 ```
 
 ### 下注和游戏流程

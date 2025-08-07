@@ -31,7 +31,7 @@ graph TB
 
     subgraph "API接口层"
         GAME_API["game/v1<br/>统一游戏接口（新）<br/>- 游戏列表和配置<br/>- 会话管理<br/>- 投注操作<br/>- 历史记录⚠️<br/>HTTP/gRPC(8000/9000)"]
-        AGGREGATOR_API["aggregator/v1<br/>聚合器管理接口✅<br/>- 聚合器CRUD<br/>- API密钥管理<br/>- Webhook配置<br/>HTTP/gRPC(8000/9000)"]
+        AGGREGATOR_API["aggregator/v1<br/>聚合器管理接口✅<br/>- 聚合器CRUD<br/>- API密钥管理（支持自定义密钥 v1.1）<br/>- Webhook配置<br/>- 时间戳返回毫秒格式（v1.1）<br/>HTTP/gRPC(8000/9000)"]
         PROVIDER_API["provider/v1<br/>提供商接口✅<br/>- 会话创建/验证(/sessions)<br/>- 游戏交互<br/>- 余额操作（由聚合器处理）<br/>HTTP(8000)"]
         WS_API["WebSocket接口✅<br/>实时游戏通信<br/>（使用game-frontend协议）<br/>WebSocket(8001)"]
     end
@@ -238,6 +238,9 @@ sequenceDiagram
      - 幂等性保证（Rollback） ✅
      - 结构化日志和监控 ✅
      - JWT令牌：CreateSession返回JWT token供WebSocket连接使用 ✅
+     - v1.1 更新：
+       - 时间戳字段返回Unix毫秒格式（int64）
+       - 响应字段使用camelCase命名
 
 2. **增强功能** ✅ *已实现*
    - 游戏注册表：动态管理游戏配置 (GameRegistry)
@@ -268,11 +271,12 @@ sequenceDiagram
    - 用途：
      - 获取游戏配置 (GetDiceGameConfig)
      - 创建服务器种子 (CreateServerSeed)
-     - 查询历史记录 (GetBetHistory)
+     - 查询历史记录 (GetBetHistory) - 包含完整公平性验证信息
    - 特点：
      - 请求-响应模式
      - RESTful API 通过 gRPC-Gateway 自动生成
      - 适合状态查询和配置管理
+     - v1.1: 投注响应不再包含 provably_fair 字段
 
 ### 协议选择策略
 
@@ -379,6 +383,7 @@ graph TB
    - **Dice 适配器**: 处理 `DicePlaceBetRequest/Response`
    - **Mines 适配器**: 处理 `MinesPlaceBetRequest`、`MinesRevealTileRequest`、`MinesCashOutRequest` 等
    - **Blackjack 适配器**: 处理 `BlackjackPlaceBetRequest`、`BlackjackPlayerActionRequest`、`BlackjackInsuranceRequest` 等
+   - **v1.1 更新**: 所有游戏适配器的投注响应不再包含 `provably_fair` 字段，公平性验证信息通过历史记录接口获取
 
 4. **事件分发器**
    - 管理客户端的事件订阅（游戏事件、实时统计等）
