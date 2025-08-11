@@ -11,7 +11,7 @@
 
 ### API 参考
 - [API 参考手册](./api-reference-zh.md) - REST API 接口文档(后续将改成redoc)
-- [WebSocket API 参考](./websocket-api-reference-zh.md) - WebSocket 接口文档(后续将改成redoc格式)
+- [WebSocket API 参考](./websocket-api-reference-zh.md) - WebSocket 接口文档(前端重点参考)
 
 ### 技术说明
 - [WebSocket 路由修复](./websocket-routing-fix.md) - WebSocket 路由问题解决方案
