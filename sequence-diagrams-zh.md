@@ -8,10 +8,10 @@
 5. [21点(Blackjack)游戏流程](#21点blackjack游戏流程)
 6. [地雷(Mines)游戏流程](#地雷mines游戏流程)
 7. [事件订阅流程](#事件订阅流程)
-8. [实时投注活动广播流程](#实时投注活动广播流程) ✅ 新增
+8. [实时投注活动广播流程](#实时投注活动广播流程)
 9. [错误处理场景](#错误处理场景)
 10. [可证明公平验证](#可证明公平验证)
-11. [服务端种子轮换流程](#服务端种子轮换流程) ✅ 新增
+11. [服务端种子轮换流程](#服务端种子轮换流程)
 12. [集成 API 流程](#集成-api-流程)
 13. [Game Aggregator Provider API 集成](#game-aggregator-provider-api-集成)
 
@@ -177,7 +177,7 @@ sequenceDiagram
 
 ## 骰子游戏下注序列
 
-> ✅ **架构更新**：已移除钱包管理功能，余额管理现在由聚合器（io）负责
+> **注意**：余额管理由聚合器（GA）负责，游戏服务专注于游戏逻辑
 
 ```mermaid
 sequenceDiagram
@@ -199,7 +199,7 @@ sequenceDiagram
     WSGateway->>DiceService: 处理下注(请求)
     
     DiceService->>DiceService: 验证请求
-    Note over DiceService: ✅ 余额检查和管理<br/>已由聚合器处理
+    Note over DiceService: 余额检查和管理<br/>由聚合器处理
     
     DiceService->>GameEngine: 生成结果(参数)
     GameEngine->>Database: 获取服务器种子
@@ -210,13 +210,13 @@ sequenceDiagram
     GameEngine->>DiceService: 游戏结果
     
     DiceService->>Database: 保存游戏结果
-    Note over Database: ✅ 仅保存游戏逻辑数据<br/>不涉及余额变更
+    Note over Database: 仅保存游戏逻辑数据<br/>不涉及余额变更
     
     DiceService->>EventBus: 发布游戏结果
-    Note over EventBus: ✅ 已实现
+    Note over EventBus: 事件广播
     
     DiceService->>WSGateway: PLACE_BET_RESPONSE
-    Note over DiceService: v1.1: 响应不含 provably_fair 字段
+    Note over DiceService: 响应不含 provably_fair 字段<br/>公平性数据通过历史接口获取
     WSGateway->>Client: 下注结果
     Client->>Player: 显示结果
     
@@ -230,10 +230,10 @@ sequenceDiagram
 
 | 组件 | 变更 | 优势 |
 |------|------|------|
-| 余额管理 | 移至聚合器 ✅ | 职责分离，专注游戏逻辑 |
-| 事务一致性 | 聚合器负责 ✅ | 避免游戏与金钱耦合 |
-| 游戏服务 | 仅处理游戏逻辑 ✅ | 简化架构，提高可维护性 |
-| Provider API | 接收聚合器调用 ✅ | 标准化接口 |
+| 余额管理 | 移至聚合器 | 职责分离，专注游戏逻辑 |
+| 事务一致性 | 聚合器负责 | 避免游戏与金钱耦合 |
+| 游戏服务 | 仅处理游戏逻辑 | 简化架构，提高可维护性 |
+| Provider API | 接收聚合器调用 | 标准化接口 |
 
 ## 21点(Blackjack)游戏流程
 
@@ -259,7 +259,7 @@ sequenceDiagram
     WSGateway->>BJAdapter: 路由到Blackjack适配器
     BJAdapter->>BJService: PlaceBlackjackBet
     
-    Note over BJService: ✅ 余额管理已移除<br/>由聚合器处理
+    Note over BJService: 余额管理<br/>由聚合器处理
     
     BJService->>BJEngine: 创建新游戏
     BJEngine->>Database: 获取服务器种子
@@ -274,7 +274,7 @@ sequenceDiagram
     
     BJService->>BJAdapter: 游戏状态
     BJAdapter->>WSGateway: BLACKJACK_PLACE_BET_RESPONSE
-    Note over BJAdapter: v1.1: 响应不含 provably_fair 字段
+    Note over BJAdapter: 响应不含 provably_fair 字段
     WSGateway->>Client: 显示初始牌面
     
     Client->>Player: 显示游戏界面
@@ -302,7 +302,7 @@ sequenceDiagram
     WSGateway->>BJAdapter: 处理保险请求
     BJAdapter->>BJService: InsuranceDecision
     
-    Note over BJService: ✅ 保险费处理<br/>由聚合器管理
+    Note over BJService: 保险费处理<br/>由聚合器管理
     
     BJService->>BJEngine: 记录保险决定
     BJEngine->>Database: 更新游戏状态
@@ -311,7 +311,7 @@ sequenceDiagram
     
     alt 庄家有Blackjack
         BJEngine->>BJService: 庄家Blackjack
-        Note over BJService: ✅ 保险赔付<br/>由聚合器处理
+        Note over BJService: 保险赔付<br/>由聚合器处理
         BJService->>BJAdapter: 游戏结束
     else 庄家无Blackjack
         BJEngine->>BJService: 继续游戏
@@ -408,7 +408,7 @@ sequenceDiagram
     BJEngine->>Database: 保存最终结果
     BJEngine->>BJService: 游戏结果
     
-    Note over BJService: ✅ 结算处理<br/>由聚合器管理
+    Note over BJService: 结算处理<br/>由聚合器管理
     Note over Aggregator: 聚合器根据游戏结果<br/>处理输赢结算
     
     BJService->>Database: 更新游戏记录
@@ -418,7 +418,7 @@ sequenceDiagram
     Note over Client: 显示最终结果
 ```
 
-## 地雷(Mines)游戏流程
+## 地雷(Mines)游戏流程 ✅ 已实现
 
 ### 游戏开始流程
 
@@ -443,7 +443,7 @@ sequenceDiagram
     WSGateway->>MinesAdapter: 路由到Mines适配器
     MinesAdapter->>MinesService: PlaceMinesBet
     
-    Note over MinesService: ✅ 余额检查<br/>由聚合器处理
+    Note over MinesService: 余额检查<br/>由聚合器处理
     
     MinesService->>MinesEngine: 创建新游戏
     MinesEngine->>Database: 获取服务器种子
@@ -457,7 +457,7 @@ sequenceDiagram
     MinesService->>MinesAdapter: 初始游戏状态
     
     MinesAdapter->>WSGateway: MINES_PLACE_BET_RESPONSE
-    Note over MinesAdapter: v1.1: 响应不含 provably_fair 字段
+    Note over MinesAdapter: 响应不含 provably_fair 字段
     WSGateway->>Client: 游戏开始
     
     Client->>Player: 显示空白网格
@@ -516,7 +516,7 @@ sequenceDiagram
             MinesEngine->>Database: 更新为LOST状态
             MinesEngine->>MinesService: 触雷，游戏结束
             
-            Note over MinesService: ✅ 下注已扣除<br/>无需额外处理
+            Note over MinesService: 下注已扣除<br/>无需额外处理
             MinesService->>EventBus: 发布游戏结束事件
             
             MinesService->>MinesAdapter: 游戏结果
@@ -562,7 +562,7 @@ sequenceDiagram
     MinesEngine->>Database: 更新为CASHED_OUT
     
     MinesEngine->>MinesService: 结算完成
-    Note over MinesService: ✅ 赔付处理<br/>由聚合器负责
+    Note over MinesService: 赔付处理<br/>由聚合器负责
     
     MinesService->>Database: 保存最终结果
     MinesService->>EventBus: 发布提现事件
@@ -585,30 +585,200 @@ sequenceDiagram
     participant WSGateway as WS网关
     participant MinesAdapter as Mines适配器
     participant MinesService as Mines服务
+    participant Cache as 内存缓存
     participant Database as 数据库
 
-    Note over Client: 恢复连接后
+    Note over Client: 查询游戏状态
     
-    Client->>WSGateway: GET_GAME_STATE_REQUEST
-    Note over Client: game_type: "mines"
+    Client->>WSGateway: MINES_GET_STATE
     
     WSGateway->>MinesAdapter: 路由请求
     MinesAdapter->>MinesService: GetGameState
     
-    MinesService->>Database: 查询活跃游戏
-    Database->>MinesService: 游戏会话数据
+    MinesService->>Cache: 查询缓存
+    Note over Cache: 双索引缓存<br/>userID -> roundID<br/>roundID -> game
     
-    alt 有进行中的游戏
+    alt 缓存命中
+        Cache->>MinesService: 游戏实例
         MinesService->>MinesService: 计算当前倍数
-        MinesService->>MinesAdapter: 游戏状态
-        MinesAdapter->>WSGateway: MINES_GET_STATE_RESPONSE
-        WSGateway->>Client: 恢复游戏状态
-        Note over Client: 显示已揭示格子<br/>当前倍数<br/>继续游戏
-    else 无活跃游戏
-        MinesService->>MinesAdapter: 空状态
-        MinesAdapter->>WSGateway: 无游戏响应
-        WSGateway->>Client: 准备新游戏
+    else 缓存未命中
+        MinesService->>Database: 查询活跃游戏
+        Database->>MinesService: 游戏会话数据
+        
+        alt 有活跃游戏
+            MinesService->>MinesService: 恢复游戏实例
+            MinesService->>Cache: 存入缓存
+        else 无活跃游戏
+            MinesService->>MinesAdapter: 返回空状态
+        end
     end
+    
+    MinesService->>MinesAdapter: 游戏状态
+    MinesAdapter->>WSGateway: MINES_GET_STATE_RESPONSE
+    WSGateway->>Client: 显示游戏状态
+```
+
+### 游戏会话恢复流程
+
+```mermaid
+sequenceDiagram
+    participant Player as 玩家
+    participant Client as 客户端
+    participant WSGateway as WS网关
+    participant MinesAdapter as Mines适配器
+    participant MinesService as Mines服务
+    participant UserRepo as 用户仓库
+    participant Database as 数据库
+    participant Cache as 内存缓存
+
+    Note over Player: 断线重连后
+    
+    Player->>Client: 恢复游戏
+    Client->>WSGateway: MINES_CHECK_ACTIVE
+    
+    WSGateway->>MinesAdapter: 检查活跃游戏
+    MinesAdapter->>UserRepo: 获取内部用户ID
+    Note over UserRepo: PlayerID -> UserID映射
+    
+    UserRepo->>MinesAdapter: 返回UserID
+    MinesAdapter->>MinesService: GetActiveGameForPlayer(userID)
+    
+    MinesService->>Database: 查询活跃会话
+    Note over Database: 查询条件:<br/>user_id = ?<br/>game_id = "inhousegame:mines"<br/>status = "active"
+    
+    alt 存在活跃游戏
+        Database->>MinesService: 返回会话数据
+        MinesService->>MinesService: 恢复游戏实例
+        Note over MinesService: 重建游戏状态:<br/>- 地雷位置<br/>- 已揭示格子<br/>- 当前倍数
+        
+        MinesService->>Cache: 存入缓存
+        Note over Cache: 双索引更新:<br/>userID -> roundID<br/>roundID -> instance
+        
+        MinesService->>MinesAdapter: 返回游戏状态
+        MinesAdapter->>WSGateway: MINES_CHECK_ACTIVE_RESPONSE
+        Note over WSGateway: hasActiveGame: true<br/>roundId: "inhousegame:mines:123"<br/>gameState: {...}
+        
+        WSGateway->>Client: 返回活跃游戏
+        Client->>Client: 显示恢复选项
+        
+        Player->>Client: 点击"继续游戏"
+        Client->>WSGateway: MINES_RESUME_GAME
+        Note over Client: roundId: "inhousegame:mines:123"
+        
+        WSGateway->>MinesAdapter: 恢复游戏
+        MinesAdapter->>MinesService: ResumeGame(roundID, userID)
+        
+        MinesService->>Cache: 更新活动时间
+        MinesService->>MinesAdapter: 游戏已恢复
+        MinesAdapter->>WSGateway: MINES_RESUME_GAME_RESPONSE
+        WSGateway->>Client: 显示游戏界面
+        
+        Note over Player: 继续游戏
+        
+    else 无活跃游戏
+        Database->>MinesService: 无结果
+        MinesService->>MinesAdapter: 无活跃游戏
+        MinesAdapter->>WSGateway: MINES_CHECK_ACTIVE_RESPONSE
+        Note over WSGateway: hasActiveGame: false
+        
+        WSGateway->>Client: 无活跃游戏
+        Client->>Player: 显示新游戏界面
+    end
+```
+
+### 游戏放弃流程
+
+```mermaid
+sequenceDiagram
+    participant Player as 玩家
+    participant Client as 客户端
+    participant WSGateway as WS网关
+    participant MinesAdapter as Mines适配器
+    participant MinesService as Mines服务
+    participant Database as 数据库
+    participant Cache as 内存缓存
+
+    Note over Player: 决定放弃当前游戏
+    
+    Player->>Client: 点击"放弃游戏"
+    Client->>WSGateway: MINES_ABANDON_GAME
+    Note over Client: roundId: "inhousegame:mines:123"
+    
+    WSGateway->>MinesAdapter: 处理放弃请求
+    MinesAdapter->>MinesService: AbandonGame(roundID, userID)
+    
+    MinesService->>Cache: 获取游戏实例
+    Cache->>MinesService: 返回实例
+    
+    MinesService->>MinesService: 验证用户权限
+    Note over MinesService: 确认userID匹配
+    
+    MinesService->>Database: 更新游戏状态
+    Note over Database: 更新字段:<br/>status = "completed"<br/>total_payout = 0<br/>completed_at = now()
+    
+    Database->>MinesService: 更新完成
+    
+    MinesService->>Cache: 移除游戏实例
+    Note over Cache: 清理双索引:<br/>删除 userID -> roundID<br/>删除 roundID -> instance
+    
+    MinesService->>MinesAdapter: 游戏已放弃
+    MinesAdapter->>WSGateway: MINES_ABANDON_GAME_RESPONSE
+    Note over WSGateway: success: true
+    
+    WSGateway->>Client: 确认放弃
+    Client->>Player: 返回游戏大厅
+    
+    Note over Player: 游戏已放弃<br/>无赔付
+```
+
+### 自动提现流程
+
+```mermaid
+sequenceDiagram
+    participant Timer as 定时器
+    participant MinesService as Mines服务
+    participant Cache as 内存缓存
+    participant MinesEngine as Mines引擎
+    participant Database as 数据库
+    participant Aggregator as 聚合器
+    participant EventBus as 事件总线
+
+    Note over Timer: 每分钟执行
+    
+    Timer->>MinesService: CleanupInactiveGames(5min)
+    
+    MinesService->>Cache: 遍历所有游戏
+    
+    loop 检查每个游戏
+        Cache->>MinesService: 游戏实例
+        MinesService->>MinesService: 检查最后活动时间
+        
+        alt 超过5分钟无活动
+            MinesService->>MinesEngine: 检查游戏状态
+            
+            alt 有已揭示的安全格子
+                MinesEngine->>MinesEngine: 计算赔付
+                Note over MinesEngine: 自动提现<br/>保护玩家利益
+                
+                MinesService->>Aggregator: ProcessWin
+                Note over Aggregator: 处理赔付
+                
+                MinesService->>Database: 更新游戏状态
+                Note over Database: status = "cashed_out"<br/>total_payout = amount
+                
+                MinesService->>EventBus: 发布自动提现事件
+                
+            else 无揭示格子
+                MinesService->>Database: 标记游戏结束
+                Note over Database: status = "completed"<br/>total_payout = 0
+            end
+            
+            MinesService->>Cache: 移除游戏实例
+            Note over Cache: 清理双索引
+        end
+    end
+    
+    MinesService->>Timer: 清理完成
 ```
 
 ## 事件订阅流程
@@ -653,7 +823,7 @@ sequenceDiagram
     WSGateway->>Client2: LIVE_STATS_EVENT
 ```
 
-## 余额更新推送流程 ✅ 新增
+## 余额更新推送流程
 
 ```mermaid
 sequenceDiagram
@@ -665,7 +835,7 @@ sequenceDiagram
     participant Client as 客户端
     participant Player as 玩家
 
-    Note over GA,Player: v1.1 新增自动余额推送
+    Note over GA,Player: 自动余额推送
 
     GA->>ProviderAPI: 余额变更通知
     Note over GA: 玩家下注/赢奖后
@@ -839,7 +1009,7 @@ sequenceDiagram
     
     WSGateway->>DiceService: 处理下注
     
-    Note over DiceService: ✅ 余额检查<br/>已由聚合器处理
+    Note over DiceService: 余额检查<br/>由聚合器处理
     Note over Aggregator: 聚合器在Provider API<br/>调用时已验证余额
     
     DiceService->>DiceService: 创建错误响应
@@ -940,7 +1110,7 @@ sequenceDiagram
     Note over Player: 结果匹配！✓
 ```
 
-## 服务端种子轮换流程 ✅ *新增*
+## 服务端种子轮换流程
 
 ### 种子轮换序列图
 
@@ -1050,7 +1220,6 @@ sequenceDiagram
 
 ## 集成 API 流程
 
-> ⚠️ **实现状态**：集成 API 完全未实现。以下流程为设计方案，当前代码中没有相关实现。
 
 ### 未实现的组件：
 - ❌ GameIntegrationService - API 定义存在但无实现，未在HTTP服务器中注册
@@ -1175,13 +1344,13 @@ sequenceDiagram
     GameEngine->>Database: 创建游戏记录
     
     SessionService->>Database: 保存会话信息
-    Note over Database: session_id, player_id<br/>game_id, created_at<br/>expires_at, status<br/>v1.1: 时间戳为毫秒格式
+    Note over Database: session_id, player_id<br/>game_id, created_at<br/>expires_at, status<br/>时间戳为毫秒格式
 
     SessionService->>JWTService: 生成JWT token
     JWTService->>SessionService: JWT token
     SessionService->>ProviderAPI: 会话创建成功
     ProviderAPI->>GA: 200 OK
-    Note over GA: Response:<br/>{<br/>  token: "eyJ...",<br/>  expiresAt: 1722688014660,<br/>  expiresIn: 7200<br/>}<br/>v1.1: 时间戳为毫秒格式
+    Note over GA: Response:<br/>{<br/>  token: "eyJ...",<br/>  expiresAt: 1722688014660,<br/>  expiresIn: 7200<br/>}<br/>时间戳为毫秒格式
 ```
 
 ### 下注和游戏流程
@@ -1207,7 +1376,7 @@ sequenceDiagram
         ProviderAPI->>GA: 401 Unauthorized
     end
 
-    Note over PlayService: ✅ 余额检查已移除<br/>由聚合器在调用前处理
+    Note over PlayService: 余额由聚合器处理<br/>游戏仅处理逻辑
 
     PlayService->>TransactionLog: 记录交易开始
     Note over TransactionLog: transaction_id, status: PENDING
@@ -1223,7 +1392,7 @@ sequenceDiagram
     PlayService->>TransactionLog: 更新交易状态
     PlayService->>Database: 提交事务
 
-    Note over PlayService: ✅ 余额更新已移除<br/>聚合器根据游戏结果处理
+    Note over PlayService: 余额更新由聚合器处理<br/>根据游戏结果结算
     
     PlayService->>ProviderAPI: 游戏完成
     ProviderAPI->>GA: 200 OK
@@ -1268,7 +1437,7 @@ sequenceDiagram
     RollbackService->>Database: 恢复游戏状态
     Note over Database: 撤销游戏结果
 
-    Note over RollbackService: ✅ 余额恢复已移除<br/>聚合器负责处理回滚
+    Note over RollbackService: 余额回滚由聚合器处理<br/>游戏仅返回不支持提示
 
     RollbackService->>TransactionLog: 标记为已回滚
     RollbackService->>Database: 提交事务

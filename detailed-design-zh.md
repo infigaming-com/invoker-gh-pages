@@ -62,14 +62,14 @@ Provider API 是专门为游戏聚合器（GA）设计的标准化接口，运�
 
 ### 核心特性
 
-#### 1. 认证机制 ✅ *已实现*
+#### 1. 认证机制
 - **HMAC-SHA256 签名验证**
   - 所有请求必须包含 `X-API-KEY` 和 `X-SIGNATURE` 头部
   - 签名算法：`HMAC-SHA256(message, API_KEY_SECRET)`
   - 支持请求时间戳验证，防止重放攻击
   - 中间件实现：`internal/middleware/auth/hmac.go`
 
-#### 2. 会话管理 ✅ *已实现*
+#### 2. 会话管理
 - **JWT Token 管理**
   - 使用JWT令牌代替传统会话
   - 2小时token过期时间
@@ -78,21 +78,14 @@ Provider API 是专门为游戏聚合器（GA）设计的标准化接口，运�
   - WebSocket连接通过URL参数传递token
   - JWT服务实现：`internal/service/jwt/jwt_service.go`
 
-#### 3. 交易管理 ❌ *已移除*
-- **架构更新**
-  - 从 v1.0 开始，所有交易管理功能已移至游戏聚合器
-  - Invoker 不再维护交易日志或处理余额变化
-  - 游戏结果仅记录游戏逻辑数据，不涉及金钱交易
-  - 聚合器负责所有BET、WIN、ROLLBACK的交易处理
+#### 3. 游戏逻辑幂等性
+- **幂等性保证**
+  - 游戏逻辑幂等性：防止重复发牌、重复下注
+  - Round ID 唯一性约束
+  - 状态机验证
+  - 交易级幂等性由聚合器负责
 
-#### 4. 幂等性保证 ❌ *不再需要*
-- **架构更新说明**
-  - 回滚功能已移至游戏聚合器处理
-  - Provider API 的 `/rollback` 端点返回 `NOT_SUPPORTED`
-  - 幂等性保证现在由聚合器负责实现
-  - Invoker 专注于游戏逻辑的幂等性（如防止重复发牌）
-
-#### 5. 游戏适配器 ✅ *已实现*
+#### 4. 游戏适配器
 - **统一游戏接口**
   - GameAdapter 封装不同游戏的具体实现
   - 支持 Dice、Mines、Blackjack
@@ -101,20 +94,20 @@ Provider API 是专门为游戏聚合器（GA）设计的标准化接口，运�
 
 ### 增强功能
 
-#### 1. 错误处理框架 ✅ *已实现*
+#### 1. 错误处理框架
 ```go
 // 错误码分类
 - 认证错误：MISSING_SIGNATURE, INVALID_SIGNATURE, EXPIRED_REQUEST
 - 验证错误：MISSING_PARAMETER, INVALID_PARAMETER
 - 会话错误：SESSION_NOT_FOUND, SESSION_EXPIRED, SESSION_INACTIVE
 - 游戏错误：GAME_NOT_FOUND, GAME_IN_PROGRESS, INVALID_BET
-- 余额错误：INSUFFICIENT_BALANCE, BALANCE_ERROR（注：余额管理已移至聚合器）
+- 余额错误：INSUFFICIENT_BALANCE, BALANCE_ERROR
 - 交易错误：TRANSACTION_NOT_FOUND, ROLLBACK_NOT_ALLOWED
 - 服务器错误：INTERNAL_ERROR, DATABASE_ERROR, NETWORK_ERROR
 ```
 实现：`internal/service/provider/errors.go`
 
-#### 2. 结构化日志 ✅ *已实现*
+#### 2. 结构化日志
 - **RequestLogger**: API 请求响应日志
 - **TransactionLogger**: 交易操作日志
 - **GameLogger**: 游戏回合日志
@@ -123,7 +116,7 @@ Provider API 是专门为游戏聚合器（GA）设计的标准化接口，运�
 
 实现：`internal/service/provider/loggers.go`
 
-#### 3. 游戏注册表 ✅ *已实现*
+#### 3. 游戏注册表
 ```go
 // 动态游戏配置管理（简化版，实际结构更复杂）
 type GameConfig struct {
@@ -149,19 +142,12 @@ type GameConfig struct {
 实现：`internal/service/provider/game_registry.go`
 注：完整的 GameConfig 结构包含更多高级配置字段，用于游戏的精细化控制
 
-#### 4. 余额缓存服务 ❌ *已移除*
-- **架构更新**
-  - 余额管理功能已完全移至游戏聚合器
-  - Invoker 不再缓存或管理玩家余额
-  - 所有余额查询通过聚合器的API进行
-  - 相关代码已从代码库中移除
-
-#### 5. 监控和指标 ⚠️ *部分实现*
-- 请求计数和成功率 ⚠️ *未实现*
-- 响应时间统计 ⚠️ *未实现*
-- 错误分布分析 ⚠️ *未实现*
-- 健康检查端点 ⚠️ *未实现*
-- 性能日志记录 ✅ *已实现* (PerformanceLogger)
+#### 4. 监控和指标
+- 请求计数和成功率
+- 响应时间统计
+- 错误分布分析
+- 健康检查端点
+- 性能日志记录 (PerformanceLogger)
 
 ### CreateSession 业务逻辑
 
@@ -275,7 +261,7 @@ WebSocket 连接建立后，系统会自动执行一系列初始化操作，确�
    - 货币支持：从 betInfo 数组中提取支持的货币
    - 高级配置：新老用户差异化设置、总体控制参数等
 
-### 余额同步机制 ✅ *已实现*
+### 余额同步机制
 
 v1.0 架构下，余额由聚合器管理，Invoker Server 实现了智能的余额同步机制，确保玩家看到的余额始终是最新的。
 
@@ -423,7 +409,7 @@ v1.0 版本对 WebSocket 模块进行了全面重构，提升了代码的可维�
 - 优雅的错误恢复机制
 - 自动处理序列化配置（如布尔字段的默认值输出）
 
-### 事件类型枚举设计 ✅ *已实现*
+### 事件类型枚举设计
 
 WebSocket 系统从字符串事件类型迁移到 Protocol Buffers 枚举，提供更好的类型安全和开发体验。
 
@@ -505,7 +491,7 @@ sequenceDiagram
 > - 无幂等键检查机制
 > - 可能导致网络重试时重复下注
 
-**JWT Token自动刷新** ✅ *已实现*
+**JWT Token自动刷新**
 - TokenRefresher组件监控所有WebSocket连接
 - 在token过期前30分钟自动刷新
 - 通过`token_refresh`消息通知客户端（注意：小写）
@@ -515,14 +501,14 @@ sequenceDiagram
 3. **状态同步** - *部分实现*
    - 重连后的 `GET_GAME_STATE` 请求 - ✅ 已实现基础版本
    - 服务器保留每个会话的最后 100 条消息 - ❌ *未实现*
-   - JWT token重连验证 - ✅ *已实现*
+   - JWT token重连验证
    
 > ⚠️ **实现状态**：
 > - GameSession 管理已实现，但无消息历史保存
 > - GET_GAME_STATE 返回简单状态，无历史消息
 > - 重连时需使用有效的JWT token
 
-### 实时投注活动广播架构 ✅ *已实现*
+### 实时投注活动广播架构
 
 实时投注活动广播是增强游戏氛围的重要功能，让所有玩家都能看到其他人的投注活动。
 
@@ -898,9 +884,13 @@ stateDiagram-v2
    - 最多 2 位小数
 
 2. **游戏特定验证**
-   - 骰子：目标值在 1-99 之间
+   - 骰子：目标值在 4-96 之间（避免赔率小于1）
    - Crash：兑现倍数 >= 1.0
-   - 地雷：网格选择有效
+   - 地雷：
+     - 网格类型：3×3、5×5、7×7
+     - 地雷数量：3×3(1-8)、5×5(1-24)、7×7(1-48)
+     - 客户端种子：8-256字符
+     - 格子索引：0 <= index < 网格大小
 
 3. **业务约束**
    - 玩家必须有足够余额
@@ -919,10 +909,12 @@ stateDiagram-v2
 ```go
 // GameSession 统一的游戏会话模型，支持所有游戏类型
 type GameSession struct {
+    // 主键
     ID           uint      `gorm:"primaryKey"`
-    GameID       string    `gorm:"uniqueIndex;not null"`    // 游戏实例唯一ID
+    
+    // 会话标识
+    GameID       string    `gorm:"index;not null"`          // 游戏类型ID（如 "inhousegame:mines"）
     SessionID    string    `gorm:"index;not null"`          // JWT会话ID
-    GameType     string    `gorm:"index;not null"`          // 游戏类型：blackjack, mines, dice
     
     // 玩家信息
     PlayerID     string    `gorm:"index;not null"`          // 外部玩家ID
@@ -931,7 +923,7 @@ type GameSession struct {
     
     // 游戏状态
     RoundID      string    `gorm:"index"`                   // 聚合器回合ID
-    Status       string    `gorm:"not null"`                // 游戏特定状态
+    Status       string    `gorm:"not null"`                // 游戏特定状态（active/completed/expired/cancelled）
     
     // 财务信息
     BetAmount    float64   `gorm:"not null"`                // 下注金额
@@ -944,14 +936,14 @@ type GameSession struct {
     Nonce        int64     `gorm:"not null"`                // 随机数
     
     // 游戏特定数据
-    GameData     JSONB     `gorm:"type:jsonb"`              // 游戏特定数据（JSONB）
+    GameData     GameData  `gorm:"type:jsonb"`              // 游戏特定数据（JSONB）
     Metadata     JSONB     `gorm:"type:jsonb"`              // 额外元数据
     
-    // 时间戳
-    LastActivity time.Time  `gorm:"not null"`               // 最后活动时间
-    CreatedAt    time.Time                                  // 创建时间
-    UpdatedAt    time.Time                                  // 更新时间
-    CompletedAt  *time.Time                                 // 完成时间（可空）
+    // 时间戳（使用 Unix 毫秒时间戳）
+    LastActivity int64   `gorm:"type:bigint;not null"`      // 最后活动时间戳（Unix毫秒）
+    CreatedAt    int64   `gorm:"type:bigint;not null"`      // 创建时间戳（Unix毫秒）
+    UpdatedAt    int64   `gorm:"type:bigint;not null"`      // 更新时间戳（Unix毫秒）
+    CompletedAt  *int64  `gorm:"type:bigint"`               // 完成时间戳（可为空，Unix毫秒）
 }
 ```
 
@@ -1069,8 +1061,7 @@ stateDiagram-v2
 type GameSession struct {
     ID            string                 // 会话唯一标识
     PlayerID      string                 // 玩家ID
-    GameType      string                 // 游戏类型
-    GameID        string                 // 当前游戏ID
+    GameID        string                 // 游戏类型ID（如 "inhousegame:mines"）
     Connection    *websocket.Conn        // WebSocket连接
     State         interface{}            // 游戏状态（多态）
     LastActivity  time.Time              // 最后活动时间
@@ -1083,7 +1074,7 @@ type GameSession struct {
 
 1. **会话创建与存储**
    ```go
-   func (m *SessionManager) CreateSession(playerID, gameType string) *GameSession
+   func (m *SessionManager) CreateSession(playerID, gameID string) *GameSession
    func (m *SessionManager) GetSession(playerID string) (*GameSession, bool)
    func (m *SessionManager) RemoveSession(playerID string)
    ```
@@ -1098,31 +1089,52 @@ type GameSession struct {
    - 超时后的处理策略：
      - Mines：自动提现
      - Blackjack：自动停牌
-     - Dice：无需特殊处理（单次游戏）
+     - Dice：无需特殊处理（即时游戏，不创建会话记录）
 
 ### 游戏特定会话管理
 
-#### Mines 会话管理
+**重要说明**：
+- **即时游戏**（如 Dice）：不创建 GameSession 记录，直接处理投注并返回结果
+- **会话游戏**（如 Mines、Blackjack）：需要创建和维护 GameSession 记录，支持多轮交互
+
+#### Mines 会话管理 ✅ 已实现
 
 ```go
-// MinesSessionManager 处理地雷游戏的会话
-type MinesSessionManager struct {
-    repo     MinesSessionRepo
-    timeout  time.Duration
+// MinesService 处理地雷游戏的服务
+type MinesService struct {
+    serverSeedRepo  ServerSeedRepo
+    gameSessionRepo GameSessionRepo  // 使用统一的 GameSession
+    gameResultRepo  GameResultRepo
+    userRepo        UserRepo
+    
+    // 双索引缓存机制
+    mu                 sync.RWMutex
+    activeGamesByUser  map[int64]map[string]*GameInstance  // userID -> roundID -> instance
+    activeGamesByRound map[string]*GameInstance            // roundID -> instance
 }
 
 // 主要功能：
-// - CreateSession: 创建新游戏会话
-// - RevealTile: 更新已揭示格子
-// - CashOut: 结束游戏并结算
-// - GetActiveSession: 获取玩家活跃游戏
-// - HandleTimeout: 超时自动提现
+// - PlaceBet: 创建新游戏（支持3×3、5×5、7×7网格）
+// - RevealTile: 揭示格子
+// - CashOut: 主动提现
+// - ResumeGame: 恢复游戏
+// - AbandonGame: 放弃游戏
+// - GetActiveGameForPlayer: 获取活跃游戏
+// - CleanupInactiveGames: 清理非活跃游戏（5分钟自动提现）
 ```
 
+**核心特性**：
+- ✅ **多网格支持**：3×3（最多8雷）、5×5（最多24雷）、7×7（最多48雷）
+- ✅ **双索引缓存**：提供O(1)的用户和回合查找性能
+- ✅ **会话恢复**：支持断线重连，从数据库恢复完整游戏状态
+- ✅ **自动提现**：5分钟无活动且有已揭示格子时自动提现
+- ✅ **原子nonce**：使用PostgreSQL RETURNING确保并发安全
+- ✅ **线性探测**：处理地雷位置生成时的碰撞
+
 **状态持久化**：
-- 游戏创建时保存到 mines_sessions 表
-- 每次揭示格子后更新数据库
-- 支持从数据库恢复游戏状态
+- 使用统一的 `game_sessions` 表
+- 游戏特定数据存储在 `game_data` JSONB 字段
+- 支持完整的状态恢复（地雷位置、已揭示格子、倍数等）
 
 #### Blackjack 会话管理
 
@@ -1544,13 +1556,13 @@ sequenceDiagram
 
 ### 令牌类型（已实现）
 
-1. **JWT令牌** ✅ *已实现*
+1. **JWT令牌**
    - 由Invoker JWT服务签发
    - 包含user_id（内部ID）、aggregator_id、game_id、过期时间
    - 2小时有效期
    - 支持自动刷新
 
-2. **Token刷新机制** ✅ *已实现*
+2. **Token刷新机制**
    - WebSocket连接中自动刷新
    - 在1.5小时后触发
    - 通过TOKEN_REFRESH消息发送新token

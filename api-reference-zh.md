@@ -1,53 +1,28 @@
 # API 参考 - Invoker Server
 
-## 变更记录
+## 概述
 
-### v1.1 (2025-01)
-- **聚合器管理 API 更新**
-  - 新增自定义密钥支持：创建聚合器和重置密钥时可使用自定义密钥（16-128字符）
-  - 时间戳格式变更：所有时间字段从 RFC3339 字符串改为 Unix 毫秒时间戳（int64）
-  - 字段命名规范：响应字段统一使用小驼峰命名（camelCase）
-- **WebSocket API 优化**
-  - 新增 BALANCE_UPDATE 事件，自动推送余额变化
-  - 优化投注活动推送机制，支持批量发送
-- **Provider API 增强**
-  - 改进会话管理，支持多币种余额查询
-  - 新增 GenerateClientSeed 接口，生成安全的客户端种子
-- **Dice 游戏更新**
-  - 目标数字（target）范围从 1.0-99.0 调整为 4.0-96.0
-  - 确保所有情况下玩家获胜时赔率都大于 1，避免"赢了反而亏损"的问题
-- **安全性增强**
-  - 客户端种子强制要求提供，移除所有默认种子
-  - 实现 nonce 原子操作，确保并发安全
-- **数据结构优化**
-  - 区分 GameID（游戏类型）和 RoundID（游戏回合）
-  - 历史记录接口返回完整的可证明公平数据
+本文档包含 Invoker Server 的所有 API 接口说明。系统提供三大API体系：
 
-### v1.0 (2024-12)
-- 初始版本发布
-- 实现 Provider API、WebSocket API、Aggregator API
-- 支持 Dice、Mines、Blackjack 三款游戏
+### API 体系
 
-## 重要说明
+1. **Game API** (`/api/game/v1/`) - 统一游戏接口
+   - 认证、会话、种子、历史、公平性验证服务
+   - JWT Bearer token 认证
 
-本文档包含 Invoker Server 的所有 API 接口说明，包括当前已实现的接口和未来规划的接口。
+2. **Provider API** (`/api/provider/v1/`) - 游戏聚合器接口
+   - 会话创建、游戏操作、客户端种子生成
+   - HMAC-SHA256 签名认证
 
-### API 实现状态
+3. **Aggregator API** (`/api/aggregator/v1/`) - 聚合器管理
+   - 聚合器CRUD、密钥管理
+   - 主密钥认证
 
-#### ✅ 已实现的 API
-- **Provider API** (`/api/provider/v1/`) - 游戏聚合器接口
-- **WebSocket API** (`wss://dev.hicasino.xyz/v1/ws`) - 实时游戏通信
-- **Aggregator API** (`/api/aggregator/v1/`) - 聚合器管理
-- **游戏前端 API** - Dice、Mines、Blackjack 游戏端点
-
-#### ⚠️ 未来规划（待实现）
-- **统一 Game API** (`/v1/game/*`) - 计划中的统一游戏接口
-  - 目标：将分散的游戏接口整合为统一的服务
-  - 当前状态：设计阶段，尚未实现
-  - 预计收益：简化接口调用，提高开发效率
-
-### 当前使用指南
-请使用已实现的 API 接口进行集成。统一 Game API 仍在规划中，实现时间待定。
+### 技术特性
+- 时间戳格式：Unix 毫秒时间戳（int64）
+- 响应字段命名：camelCase
+- 客户端种子：强制提供（8-256字符）
+- Dice target范围：4.0-96.0
 
 ## API 认证方式总览
 
@@ -78,18 +53,338 @@
 
 ## 目录
 
-### 已实现接口
-1. [Provider API](#provider-api) ✅ 生产可用
-2. [WebSocket API](#websocket-api) ✅ 生产可用
-3. [游戏前端 API](#游戏前端-api) ✅ 生产可用
-4. [种子管理 API](#种子管理-api) ✅ 生产可用
-5. [Aggregator API](#aggregator-api) ✅ 生产可用
+1. [Game API](#game-api) - 统一游戏接口
+2. [Provider API](#provider-api) - 游戏聚合器接口
+3. [Aggregator API](#aggregator-api) - 聚合器管理
+4. [WebSocket API](#websocket-api) - 实时游戏通信
+5. [公平性验证 API](#公平性验证-api) - 游戏公平性验证
 6. [错误代码](#错误代码)
 7. [金额格式说明](#金额格式说明)
 
-### 未来规划
-7. [统一 Game API（设计阶段）](#统一-game-api设计阶段) ⚠️ 待实现
-8. [集成 API（未实现）](#集成-api) ⚠️ 无实现
+## Game API
+
+### 概述
+Game API 是统一的游戏接口，提供认证、会话管理、种子管理、历史记录和公平性验证等功能。
+
+**基础信息**:
+- **端点**: `https://dev.hicasino.xyz/api/game/v1`
+- **协议**: HTTP/gRPC
+- **端口**: HTTP(8000), gRPC(9000)
+- **认证**: JWT Bearer token
+
+### 认证服务 (AuthService)
+
+#### 认证用户
+**POST** `/v1/auth/authenticate`
+
+验证凭据并返回会话信息。
+
+**请求头**:
+```
+Authorization: Bearer <token>
+```
+
+**响应**:
+```json
+{
+  "session": {
+    "sessionId": "sess_123456",
+    "userId": "user_789",
+    "aggregatorId": "agg_123",
+    "gameId": "inhousegame:dice",
+    "expiresAt": 1640995200000
+  }
+}
+```
+
+### 会话服务 (SessionService)
+
+#### 创建会话
+**POST** `/v1/sessions`
+
+创建新的游戏会话。
+
+**请求体**:
+```json
+{
+  "playerId": "player_123",
+  "gameId": "inhousegame:dice",
+  "currency": "USD"
+}
+```
+
+**响应**:
+```json
+{
+  "sessionId": "sess_123456",
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "expiresIn": 7200,
+  "expiresAt": 1640995200000
+}
+```
+
+#### 获取会话信息
+**GET** `/v1/sessions/{id}`
+
+获取指定会话的详细信息。
+
+**响应**:
+```json
+{
+  "session": {
+    "sessionId": "sess_123456",
+    "playerId": "player_123",
+    "gameId": "inhousegame:dice",
+    "currency": "USD",
+    "status": "active",
+    "createdAt": 1640988000000,
+    "expiresAt": 1640995200000
+  }
+}
+```
+
+#### 刷新会话
+**POST** `/v1/sessions/{id}/refresh`
+
+刷新会话令牌。
+
+**响应**:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "expiresIn": 7200,
+  "expiresAt": 1640995200000
+}
+```
+
+#### 结束会话
+**POST** `/v1/sessions/{id}/end`
+
+结束游戏会话。
+
+**响应**:
+```json
+{
+  "success": true,
+  "message": "Session ended successfully"
+}
+```
+
+### 种子服务 (SeedService)
+
+#### 轮换种子
+**POST** `/v1/seeds/rotate`
+
+轮换服务器种子。
+
+**请求体**:
+```json
+{}
+```
+
+**响应**:
+```json
+{
+  "oldSeed": {
+    "seedId": 12345,
+    "seedValue": "revealed-old-seed",
+    "seedHash": "sha256-hash",
+    "nonce": 42,
+    "totalBets": 42,
+    "isActive": false,
+    "createdAt": 1640988000000,
+    "revealedAt": 1640995200000
+  },
+  "newSeed": {
+    "seedId": 12346,
+    "seedHash": "new-seed-hash",
+    "nonce": 0,
+    "totalBets": 0,
+    "isActive": true,
+    "createdAt": 1640995200000
+  }
+}
+```
+
+#### 获取当前种子
+**GET** `/v1/seeds/current`
+
+获取当前活跃的种子信息。
+
+**响应**:
+```json
+{
+  "seed": {
+    "seedId": 12346,
+    "seedHash": "current-seed-hash",
+    "nonce": 15,
+    "totalBets": 15,
+    "isActive": true,
+    "createdAt": 1640995200000
+  }
+}
+```
+
+#### 获取历史种子
+**GET** `/v1/seeds/history`
+
+获取历史种子记录。
+
+**查询参数**:
+- `limit` (可选): 返回记录数，默认20
+- `offset` (可选): 偏移量，默认0
+
+**响应**:
+```json
+{
+  "seeds": [
+    {
+      "seedId": 12345,
+      "seedValue": "revealed-seed",
+      "seedHash": "sha256-hash",
+      "nonce": 42,
+      "totalBets": 42,
+      "isActive": false,
+      "createdAt": 1640988000000,
+      "revealedAt": 1640995200000
+    }
+  ],
+  "total": 100
+}
+```
+
+#### 生成客户端种子
+**POST** `/v1/seeds/generate-client`
+
+生成安全的客户端种子。
+
+**响应**:
+```json
+{
+  "clientSeed": "secure-random-seed-string"
+}
+```
+
+### 历史服务 (HistoryService)
+
+#### 获取投注历史
+**GET** `/v1/history/bets`
+
+获取玩家的投注历史列表。
+
+**查询参数**:
+- `gameId` (可选): 游戏ID筛选
+- `limit` (可选): 返回记录数，默认20
+- `offset` (可选): 偏移量，默认0
+- `startTime` (可选): 开始时间（Unix毫秒）
+- `endTime` (可选): 结束时间（Unix毫秒）
+
+**响应**:
+```json
+{
+  "bets": [
+    {
+      "betId": "bet_123456",
+      "roundId": "round_123456",
+      "gameId": "inhousegame:dice",
+      "playerId": "player_123",
+      "betAmount": "10.00",
+      "winAmount": "19.40",
+      "currency": "USD",
+      "result": "win",
+      "gameData": {
+        "target": 50.5,
+        "roll": 42.85,
+        "isRollOver": false
+      },
+      "provablyFair": {
+        "serverSeed": "revealed-seed",
+        "serverSeedHash": "hash",
+        "clientSeed": "client-seed",
+        "nonce": 1
+      },
+      "createdAt": 1640995200000
+    }
+  ],
+  "total": 500,
+  "pagination": {
+    "limit": 20,
+    "offset": 0,
+    "hasMore": true
+  }
+}
+```
+
+#### 获取投注详情
+**GET** `/v1/history/bets/{id}`
+
+获取单个投注的详细信息。
+
+**响应**:
+```json
+{
+  "bet": {
+    "betId": "bet_123456",
+    "roundId": "round_123456",
+    "gameId": "inhousegame:dice",
+    "playerId": "player_123",
+    "betAmount": "10.00",
+    "winAmount": "19.40",
+    "currency": "USD",
+    "result": "win",
+    "gameData": {
+      "target": 50.5,
+      "roll": 42.85,
+      "isRollOver": false,
+      "multiplier": 1.94
+    },
+    "provablyFair": {
+      "serverSeed": "revealed-seed",
+      "serverSeedHash": "sha256-hash",
+      "clientSeed": "client-seed",
+      "nonce": 1,
+      "verification": {
+        "combinedSeed": "client-seed:server-seed:1",
+        "hashHex": "5a9c3f2b...",
+        "finalRoll": 42.85
+      }
+    },
+    "createdAt": 1640995200000,
+    "completedAt": 1640995201000
+  }
+}
+```
+
+### 公平性服务 (FairnessService)
+
+#### 验证Dice结果
+**POST** `/v1/fairness/dice/verify`
+
+验证Dice游戏结果的公平性。
+
+**请求体**:
+```json
+{
+  "clientSeed": "client-seed",
+  "serverSeed": "server-seed",
+  "nonce": 1
+}
+```
+
+**响应**:
+```json
+{
+  "roll": 42.85714286,
+  "details": {
+    "combinedSeed": "client-seed:server-seed:1",
+    "hashHex": "5a9c3f2b8e1d4c7a...",
+    "hashFirst8": "5a9c3f2b",
+    "hashDecimal": 1520189227,
+    "rawValue": 0.35404999,
+    "finalRoll": 42.85714286
+  }
+}
+```
 
 ## Provider API
 
@@ -309,7 +604,7 @@ Provider API 是为游戏聚合器（GA）设计的标准化接口，允许赌�
 }
 ```
 
-#### 7. 生成客户端种子 ✅ *新增*
+#### 7. 生成客户端种子
 **POST** `/api/provider/v1/client-seed`
 
 生成用于可证明公平游戏的安全客户端种子。
@@ -331,6 +626,45 @@ Provider API 是为游戏聚合器（GA）设计的标准化接口，允许赌�
 - 使用加密安全的随机数生成器 (crypto/rand)
 - 每次调用返回一个唯一的种子
 - 适用于所有支持可证明公平的游戏
+
+#### 8. 创建IO平台兼容会话
+**POST** `/api/provider/v1/io/sessions`
+
+为IO平台创建兼容的游戏会话。
+
+**请求体**:
+```json
+{
+  "player_id": "io_player_123",
+  "game_id": "inhousegame:dice",
+  "currency": "USD",
+  "operator_id": "io_platform",
+  "balance": "1000.00",
+  "session_params": {
+    "language": "en",
+    "return_url": "https://io.casino/games"
+  }
+}
+```
+
+**响应**:
+```json
+{
+  "success": true,
+  "data": {
+    "session_id": "io_sess_123456",
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "game_url": "https://dev.hicasino.xyz/games/dice?token=...",
+    "expires_at": 1640995200000,
+    "expires_in": 7200
+  }
+}
+```
+
+**说明**:
+- 专门为IO平台设计的会话创建接口
+- 支持IO平台特定的参数和格式
+- 返回的会话与IO平台的用户系统兼容
 
 
 ### Provider API 错误码
@@ -1493,233 +1827,280 @@ Authorization: Bearer <current_token>
 }
 ```
 
-### 地雷(Mines)游戏端点
+### 地雷(Mines)游戏端点 ✅ 已实现
 
-#### 获取地雷游戏配置
-**GET** `/api/v1/mines/config`
-
-**响应**:
-```json
-{
-  "success": true,
-  "data": {
-    "min_bet_amount": 1.0,
-    "max_bet_amount": 10000.0,
-    "available_mines": [1, 3, 5, 10, 15, 20, 24],
-    "house_edge": 1.0
-  }
-}
-```
-
-#### 开始新游戏
-**POST** `/api/v1/mines/bet`
-
-**请求体**:
-```json
-{
-  "amount": 100.0,
-  "currency": "USD",
-  "mines_count": 5,
-  "client_seed": "player-chosen-seed"
-}
-```
-
-**响应**:
-```json
-{
-  "success": true,
-  "data": {
-    "game_id": "mines_abc123",
-    "request_id": "req_456",
-    "game_state": {
-      "game_id": "mines_abc123",
-      "status": "STATUS_IN_PROGRESS",
-      "bet_amount": 100.0,
-      "mines_count": 5,
-      "revealed_tiles": [],
-      "safe_tiles_revealed": 0,
-      "created_at": 1640995200000,
-      "updated_at": 1640995200000
-    },
-    "provably_fair": {
-      "client_seed": "player-chosen-seed",
-      "hashed_server_seed": "hash_of_server_seed",
-      "nonce": 1
-    }
-  }
-}
-```
-
-#### 揭示瓦片
-**POST** `/api/v1/mines/reveal`
-
-**请求体**:
-```json
-{
-  "game_id": "mines_abc123",
-  "tile_index": 12
-}
-```
-
-**响应（安全瓦片）**:
-```json
-{
-  "success": true,
-  "data": {
-    "request_id": "req_789",
-    "is_mine": false,
-    "game_state": {
-      "game_id": "mines_abc123",
-      "status": "STATUS_IN_PROGRESS",
-      "bet_amount": 100.0,
-      "mines_count": 5,
-      "revealed_tiles": [12],
-      "safe_tiles_revealed": 1
-    },
-    "current_multiplier": 1.04,
-    "next_multiplier": 1.09
-  }
-}
-```
-
-**响应（触雷）**:
-```json
-{
-  "success": true,
-  "data": {
-    "request_id": "req_790",
-    "is_mine": true,
-    "game_state": {
-      "game_id": "mines_abc123",
-      "status": "STATUS_LOST",
-      "bet_amount": 100.0,
-      "mines_count": 5,
-      "revealed_tiles": [12, 15],
-      "safe_tiles_revealed": 1
-    },
-    "result": {
-      "mine_positions": [2, 5, 8, 15, 20],
-      "safe_tiles_revealed": 1,
-      "final_multiplier": 0,
-      "payout": 0,
-      "provably_fair": {
-        "client_seed": "player-chosen-seed",
-        "server_seed": "revealed-server-seed",
-        "hashed_server_seed": "hash_of_server_seed",
-        "nonce": 1
-      }
-    }
-  }
-}
-```
-
-#### 现金提取
-**POST** `/api/v1/mines/cashout`
-
-**请求体**:
-```json
-{
-  "game_id": "mines_abc123",
-  "player_id": "player123"
-}
-```
-
-**响应**:
-```json
-{
-  "success": true,
-  "data": {
-    "request_id": "req_791",
-    "payout": 208.0,
-    "game_state": {
-      "game_id": "mines_abc123",
-      "status": "STATUS_CASHED_OUT",
-      "bet_amount": 100.0,
-      "mines_count": 5,
-      "revealed_tiles": [3, 7, 12, 18, 22],
-      "safe_tiles_revealed": 5
-    },
-    "result": {
-      "mine_positions": [2, 5, 8, 15, 20],
-      "safe_tiles_revealed": 5,
-      "final_multiplier": 2.08,
-      "payout": 208.0,
-      "provably_fair": {
-        "client_seed": "player-chosen-seed",
-        "server_seed": "revealed-server-seed",
-        "hashed_server_seed": "hash_of_server_seed",
-        "nonce": 1
-      }
-    }
-  }
-}
-```
-
-#### 获取游戏状态
-**GET** `/api/v1/mines/state/{game_id}`
-
-**响应**:
-```json
-{
-  "success": true,
-  "data": {
-    "game_state": {
-      "game_id": "mines_abc123",
-      "status": "STATUS_IN_PROGRESS",
-      "bet_amount": 100.0,
-      "mines_count": 5,
-      "revealed_tiles": [3, 7, 12],
-      "safe_tiles_revealed": 3
-    },
-    "current_multiplier": 1.13,
-    "next_multiplier": 1.19
-  }
-}
-```
+#### 支持的网格配置
+- **3×3 网格**: 9个格子，最多8个地雷
+- **5×5 网格**: 25个格子，最多24个地雷（默认）
+- **7×7 网格**: 49个格子，最多48个地雷
 
 #### WebSocket 消息格式（Mines）
 
-**开始游戏（使用通用 PlaceBetRequest）**:
+**开始游戏（使用通用 PLACE_BET_REQUEST）**:
 ```json
 {
   "id": "msg_123",
   "type": "PLACE_BET_REQUEST",
-  "timestamp": 1640995200000,
-  "place_bet_request": {
+  "payload": {
     "game_type": "mines",
-    "amount": 100.0,
+    "amount": "100.0",
     "currency": "USD",
     "game_params": {
       "mines": {
-        "mines_count": 5
+        "mines_count": 5,
+        "grid_type": "5x5"  // 可选: "3x3", "5x5", "7x7"
       }
     },
-    "client_seed": "player-chosen-seed"
+    "client_seed": "player-chosen-seed"  // 必需：8-256字符
   }
 }
 ```
 
-**注意**: player_id 无需在消息中传递，由 WebSocket 认证自动关联
+**响应（PLACE_BET_RESPONSE）**:
+```json
+{
+  "id": "msg_123",
+  "type": "PLACE_BET_RESPONSE",
+  "payload": {
+    "betId": "inhousegame:mines:123456",
+    "gameResult": {
+      "gameId": "inhousegame:mines:123456",
+      "betAmount": "100.0",
+      "winAmount": "0",
+      "isWin": false,
+      "multiplier": "1.0",
+      "timestamp": 1640995200000,
+      "gameOutcome": {
+        "minesOutcome": {
+          "minePositions": null,  // 游戏进行中不公开
+          "revealedTiles": [],
+          "safeTilesRevealed": 0
+        }
+      }
+    },
+    "balance": "9900.00"  // 由余额同步器更新
+  }
+}
+```
 
-**揭示瓦片请求（通过 data 字段）**:
+**揭示格子请求（MINES_REVEAL_TILE）**:
 ```json
 {
   "id": "msg_124",
-  "type": "mines_reveal_tile",
-  "timestamp": 1640995200000,
-  "data": "{\"game_id\": \"mines_abc123\", \"tile_index\": 12}"
+  "type": "MINES_REVEAL_TILE",
+  "payload": {
+    "gameId": "inhousegame:mines:123456",
+    "tileIndex": 12
+  }
 }
 ```
 
-**现金提取请求（通过 data 字段）**:
+**揭示格子响应（安全）**:
+```json
+{
+  "id": "msg_124",
+  "type": "MINES_REVEAL_TILE_RESPONSE",
+  "payload": {
+    "isMine": false,
+    "gameState": {
+      "gameId": "inhousegame:mines:123456",
+      "status": "in_progress",
+      "betAmount": "100.0",
+      "minesCount": 5,
+      "gridType": "5x5",
+      "revealedTiles": [12],
+      "safeTilesRevealed": 1,
+      "createdAt": 1640995200000,
+      "updatedAt": 1640995201000
+    },
+    "currentMultiplier": "1.04",
+    "nextMultiplier": "1.09"
+  }
+}
+```
+
+**揭示格子响应（触雷）**:
+```json
+{
+  "id": "msg_124",
+  "type": "MINES_REVEAL_TILE_RESPONSE",
+  "payload": {
+    "isMine": true,
+    "gameState": {
+      "gameId": "inhousegame:mines:123456",
+      "status": "lost",
+      "betAmount": "100.0",
+      "minesCount": 5,
+      "gridType": "5x5",
+      "revealedTiles": [12, 15],
+      "safeTilesRevealed": 1,
+      "createdAt": 1640995200000,
+      "updatedAt": 1640995202000
+    },
+    "result": {
+      "minePositions": [2, 5, 8, 15, 20],
+      "safeTilesRevealed": 1,
+      "finalMultiplier": "0",
+      "payout": "0",
+      "provablyFair": {
+        "clientSeed": "player-chosen-seed",
+        "serverSeed": "",  // 不在响应中公开
+        "hashedServerSeed": "",
+        "nonce": 1
+      }
+    }
+  }
+}
+```
+
+**提现请求（MINES_CASH_OUT）**:
 ```json
 {
   "id": "msg_125",
-  "type": "mines_cash_out",
-  "timestamp": 1640995200000,
-  "data": "{\"game_id\": \"mines_abc123\"}"
+  "type": "MINES_CASH_OUT",
+  "payload": {
+    "gameId": "inhousegame:mines:123456"
+  }
 }
 ```
+
+**提现响应**:
+```json
+{
+  "id": "msg_125",
+  "type": "MINES_CASH_OUT_RESPONSE",
+  "payload": {
+    "payout": "208.0",
+    "gameState": {
+      "gameId": "inhousegame:mines:123456",
+      "status": "cashed_out",
+      "betAmount": "100.0",
+      "minesCount": 5,
+      "gridType": "5x5",
+      "revealedTiles": [3, 7, 12, 18, 22],
+      "safeTilesRevealed": 5,
+      "createdAt": 1640995200000,
+      "updatedAt": 1640995210000
+    },
+    "result": {
+      "minePositions": [2, 5, 8, 15, 20],
+      "safeTilesRevealed": 5,
+      "finalMultiplier": "2.08",
+      "payout": "208.0",
+      "provablyFair": {
+        "clientSeed": "player-chosen-seed",
+        "serverSeed": "",
+        "hashedServerSeed": "",
+        "nonce": 1
+      }
+    },
+    "balance": "0"  // 将由余额同步器更新
+  }
+}
+```
+
+**检查活跃游戏（MINES_CHECK_ACTIVE）**:
+```json
+{
+  "id": "msg_126",
+  "type": "MINES_CHECK_ACTIVE",
+  "payload": {}
+}
+```
+
+**检查活跃游戏响应（有活跃游戏）**:
+```json
+{
+  "id": "msg_126",
+  "type": "MINES_CHECK_ACTIVE_RESPONSE",
+  "payload": {
+    "hasActiveGame": true,
+    "roundId": "inhousegame:mines:123456",
+    "gameState": {
+      "game_id": "inhousegame:mines:123456",
+      "status": "in_progress",
+      "bet_amount": "100.0",
+      "mines_count": 5,
+      "grid_type": "5x5",
+      "revealed_tiles": [3, 7, 12],
+      "safe_tiles_revealed": 3
+    }
+  }
+}
+```
+
+**恢复游戏（MINES_RESUME_GAME）**:
+```json
+{
+  "id": "msg_127",
+  "type": "MINES_RESUME_GAME",
+  "payload": {
+    "roundId": "inhousegame:mines:123456"
+  }
+}
+```
+
+**恢复游戏响应**:
+```json
+{
+  "id": "msg_127",
+  "type": "MINES_RESUME_GAME_RESPONSE",
+  "payload": {
+    "roundId": "inhousegame:mines:123456",
+    "gameState": {
+      "game_id": "inhousegame:mines:123456",
+      "status": "in_progress",
+      "bet_amount": "100.0",
+      "mines_count": 5,
+      "grid_type": "5x5",
+      "revealed_tiles": [3, 7, 12],
+      "safe_tiles_revealed": 3
+    }
+  }
+}
+```
+
+**放弃游戏（MINES_ABANDON_GAME）**:
+```json
+{
+  "id": "msg_128",
+  "type": "MINES_ABANDON_GAME",
+  "payload": {
+    "roundId": "inhousegame:mines:123456"
+  }
+}
+```
+
+**放弃游戏响应**:
+```json
+{
+  "id": "msg_128",
+  "type": "MINES_ABANDON_GAME_RESPONSE",
+  "payload": {
+    "success": true
+  }
+}
+```
+
+**获取游戏状态（MINES_GET_STATE）**:
+```json
+{
+  "id": "msg_129",
+  "type": "MINES_GET_STATE",
+  "payload": {}
+}
+```
+
+**注意事项**:
+1. **RoundID 格式**: `"inhousegame:mines:123456"` - 唯一标识一局游戏
+2. **客户端种子**: 必须提供，8-256字符，无默认值
+3. **单游戏限制**: 每个玩家同时只能有一个活跃的 Mines 游戏
+4. **自动提现**: 5分钟无活动且有已揭示格子时自动提现
+5. **余额更新**: 通过 WebSocket BALANCE_UPDATE 事件自动推送
+
+**已废弃的格式**:
+- HTTP REST API 端点（`/api/v1/mines/*`）已废弃，改用 WebSocket
+- 使用 `data` 字段的旧消息格式已废弃，改用 `payload` 字段
 
 ### 21点(Blackjack)游戏端点
 
@@ -2209,6 +2590,64 @@ X-API-Key: <integration-api-key>
 - 时间筛选使用 ISO 8601 格式
 - 汇总统计（summary）基于当前筛选条件计算，不是全部历史
 
+#### 查询投注详情
+**POST** `/v1/bets/detail`
+
+通过投注ID查询单个投注的详细信息。返回完整的游戏数据和可证明公平信息。
+
+**认证要求**:
+- 必须提供有效的 JWT token
+- 系统会验证投注是否属于当前用户
+
+**请求参数**:
+```json
+{
+  "betId": "dice_player123_1705762200000"
+}
+```
+
+**响应示例**:
+```json
+{
+  "bet": {
+    "bet": {
+      "betId": "dice_player123_1705762200000",
+      "sessionId": "session_abc123",
+      "betAmount": {
+        "amount": "10.00",
+        "currency": "USD"
+      },
+      "winAmount": {
+        "amount": "19.80",
+        "currency": "USD"
+      },
+      "isWin": true,
+      "multiplier": "1.98x",
+      "createdAt": 1705762200000
+    },
+    "gameId": "inhousegame:dice",
+    "gameName": "Dice",
+    "gameData": {
+      "target": 50.5,
+      "prediction": "over",
+      "result": 65.32
+    },
+    "provablyFair": {
+      "clientSeed": "player_chosen_seed",
+      "serverSeed": "0xABCDEF123456",
+      "hashedServerSeed": "sha256_hash_of_server_seed",
+      "nonce": 1
+    }
+  }
+}
+```
+
+**注意事项**:
+- bet_id 实际上是游戏的 round_id
+- 只能查询属于当前用户的投注记录
+- 返回的数据结构与历史列表中的单个记录相同
+- 如果服务器种子已失效，会返回完整的种子值用于验证
+
 ## 错误代码
 
 ### 通用错误代码
@@ -2629,6 +3068,100 @@ POST /api/aggregator/v1/reset-secret
 - **更好的扩展性**：便于添加新游戏和功能
 - **标准化**：遵循 RESTful 最佳实践
 - **类型安全**：使用 Protocol Buffers 提供强类型支持
+
+## 公平性验证 API
+
+### Dice 游戏公平性验证 ✅
+
+**POST** `/v1/fairness/dice/verify`
+
+验证 Dice 游戏的随机数生成公平性。客户端提供种子信息，服务端返回计算出的骰子值。
+
+**接口特点**:
+- 专注于验证随机数生成的公平性
+- 不涉及游戏规则判定（输赢由客户端自行判断）
+- 提供完整的计算过程，确保透明度
+
+**请求头**:
+```
+Content-Type: application/json
+```
+
+**请求体**:
+```json
+{
+  "clientSeed": "my-lucky-seed-123",     // 客户端种子
+  "serverSeed": "server-seed-revealed",  // 服务端种子（游戏结束后揭露）
+  "nonce": 1                             // Nonce值（必须 >= 0）
+}
+```
+
+**响应示例**:
+```json
+{
+  "roll": 42.85714286,                   // 计算出的骰子值（0-100）
+  "details": {
+    "combinedSeed": "my-lucky-seed-123:server-seed-revealed:1",  // 组合种子
+    "hashHex": "5a9c3f2b8e1d4c7a9f3b2e1d4c7a9f3b2e1d4c7a...",    // SHA256哈希（完整）
+    "hashFirst8": "5a9c3f2b",            // 前8位十六进制
+    "hashDecimal": 1520189227,           // 转换为十进制
+    "rawValue": 0.35404999,              // 原始值（0-1）
+    "finalRoll": 42.85714286,            // 最终骰子值（0-100）
+    "calculationSteps": "1. 组合种子: my-lucky-seed-123:server-seed-revealed:1\n2. SHA256哈希: 5a9c3f2b...\n3. 取前8位: 5a9c3f2b\n4. 转十进制: 1520189227\n5. 计算原始值: 1520189227 / 0xFFFFFFFF = 0.35404999\n6. 最终结果: 0.35404999 * 100 = 42.85714286"
+  }
+}
+```
+
+**验证算法**:
+1. **组合种子**: `clientSeed:serverSeed:nonce`
+2. **SHA256哈希**: 对组合种子进行哈希计算
+3. **提取随机数**: 取哈希值前8个十六进制字符
+4. **转换十进制**: 将十六进制转换为十进制数
+5. **计算骰子值**: `(十进制数 / 0xFFFFFFFF) * 100`
+
+**客户端使用示例**:
+```javascript
+// 调用验证接口
+const response = await fetch('/v1/fairness/dice/verify', {
+  method: 'POST',
+  body: JSON.stringify({
+    clientSeed: 'my-seed',
+    serverSeed: 'server-seed',
+    nonce: 1
+  })
+});
+
+const { roll } = await response.json();
+
+// 客户端自行判断输赢
+const target = 50.5;
+const isRollOver = false;
+const isWin = isRollOver ? roll > target : roll <= target;
+
+// 客户端自行计算赔率
+const multiplier = isRollOver 
+  ? (100 / (100 - target) * 0.97)
+  : (100 / target * 0.97);
+```
+
+**错误响应**:
+```json
+{
+  "code": 400,
+  "reason": "INVALID_CLIENT_SEED",
+  "message": "客户端种子不能为空"
+}
+```
+
+**使用场景**:
+- 玩家验证历史游戏结果的公平性
+- 第三方审计服务进行独立验证
+- 客户端不想自己实现验证算法，委托服务端计算
+
+**注意事项**:
+- 服务端种子只有在该种子失效后才会揭露给玩家
+- 该接口仅负责验证随机数生成，不处理游戏逻辑
+- Nonce 值随着每次投注递增，确保相同种子产生不同结果
 
 ## 相关文档
 - [详细设计](./detailed-design-zh.md) - 架构和设计原则

@@ -2,9 +2,7 @@
 
 ## 系统概览
 
-Invoker Server 是一个为赌场平台设计的内部原创游戏提供商服务。它提供了多样化的游戏，并具有可证明公平机制。
-
-> **重要架构变更**：从 v1.0 开始，Invoker 不再管理玩家余额。所有余额管理功能已移至游戏聚合器（如 io）。Invoker 现在作为纯粹的游戏逻辑提供商运行。
+Invoker Server 是一个为赌场平台设计的内部原创游戏提供商服务，提供具有可证明公平机制的多样化游戏。系统专注于游戏逻辑实现，余额管理由游戏聚合器负责。
 
 ### 当前支持的游戏：
 - ✅ **骰子(Dice)** - 经典的大小猜测游戏
@@ -12,9 +10,9 @@ Invoker Server 是一个为赌场平台设计的内部原创游戏提供商服�
 - ✅ **21点(Blackjack)** - 经典纸牌游戏，支持分牌、加倍、保险等功能
 
 ### 计划中的游戏：
-- ⚠️ **撞击(Crash)** - 倍数增长游戏（设计中，未实现）
-- ⚠️ **弹珠机(Plinko)** - 弹珠下落游戏（设计中，未实现）
-- ⚠️ **基诺(Keno)** - 数字彩票游戏（设计中，未实现）
+- **撞击(Crash)** - 倍数增长游戏
+- **弹珠机(Plinko)** - 弹珠下落游戏
+- **基诺(Keno)** - 数字彩票游戏
 
 服务采用 Kratos v2 框架构建，直接暴露 WebSocket、HTTP 和 gRPC 端点，无需独立的 API 网关。
 
@@ -30,15 +28,14 @@ graph TB
     end
 
     subgraph "API接口层"
-        GAME_API["game/v1<br/>统一游戏接口（新）<br/>- 游戏列表和配置<br/>- 会话管理<br/>- 投注操作<br/>- 历史记录⚠️<br/>HTTP/gRPC(8000/9000)"]
-        AGGREGATOR_API["aggregator/v1<br/>聚合器管理接口✅<br/>- 聚合器CRUD<br/>- API密钥管理（支持自定义密钥 v1.1）<br/>- Webhook配置<br/>- 时间戳返回毫秒格式（v1.1）<br/>HTTP/gRPC(8000/9000)"]
-        PROVIDER_API["provider/v1<br/>提供商接口✅<br/>- 会话创建/验证(/sessions)<br/>- 游戏交互<br/>- 余额操作（由聚合器处理）<br/>HTTP(8000)"]
-        WS_API["WebSocket接口✅<br/>实时游戏通信<br/>（使用game-frontend协议）<br/>WebSocket(8001)"]
+        GAME_API["game/v1<br/>统一游戏接口<br/>- 游戏列表和配置<br/>- 会话管理<br/>- 投注操作<br/>- 历史记录<br/>- 公平性验证<br/>HTTP/gRPC(8000/9000)"]
+        AGGREGATOR_API["aggregator/v1<br/>聚合器管理接口<br/>- 聚合器CRUD<br/>- API密钥管理（支持自定义密钥）<br/>- Webhook配置<br/>- 时间戳毫秒格式<br/>HTTP/gRPC(8000/9000)"]
+        PROVIDER_API["provider/v1<br/>提供商接口<br/>- 会话创建/验证<br/>- 游戏交互<br/>- 客户端种子生成<br/>- IO平台兼容<br/>HTTP(8000)"]
+        WS_API["WebSocket接口<br/>实时游戏通信<br/>- 投注操作<br/>- 余额同步<br/>- 事件推送<br/>WebSocket(8001)"]
     end
 
     subgraph "服务层"
         GAME_SVC[游戏服务<br/>Dice/Mines/Blackjack]
-        WALLET_SVC[钱包服务<br/>❌ 已移除 - 由聚合器管理]
         JWT_SVC[JWT服务<br/>令牌生成/验证/刷新]
         WS_HANDLER[WebSocket处理器<br/>消息路由/订阅管理]
         SESSION_MGR[游戏会话管理<br/>状态维护]
@@ -156,39 +153,42 @@ sequenceDiagram
 - **赌场平台系统**: 第三方赌场平台通过集成API接入
 
 ### 2. **API接口层**
-- **game-frontend/v1**: 面向玩家的游戏API，支持WebSocket和HTTP
-  - WebSocket: 用于实时游戏交互，使用 Protocol Buffers 和 JSON 双格式支持
-    - ✅ 连接初始化器：WebSocket连接建立后自动发送游戏配置
-  - HTTP/gRPC: 用于游戏配置获取、历史记录查询等非实时操作
-- **game-integration/v1**: 面向赌场平台的集成API，用于账户管理和游戏集成
-  - 仅支持 HTTP/gRPC 协议
+- **game/v1**: 统一游戏API，支持WebSocket、HTTP和gRPC
+  - WebSocket: 实时游戏交互，支持 Protocol Buffers 和 JSON
+  - HTTP/gRPC: 游戏配置、历史记录、公平性验证等
+  - 连接初始化：自动发送游戏配置
+- **provider/v1**: 游戏聚合器接口
+  - HMAC-SHA256认证
+  - 会话管理和游戏操作
+- **aggregator/v1**: 聚合器管理接口
+  - 主密钥认证
+  - 聚合器配置管理
 
 ### 3. **服务层**
 - **游戏服务**: 处理各种游戏的业务逻辑
-  - ✅ 骰子(Dice)服务 - 实现大小猜测游戏逻辑
-  - ✅ 地雷(Mines)服务 - 实现扫雷游戏逻辑，支持逐步揭示和提现
-  - ✅ 21点(Blackjack)服务 - 实现21点游戏逻辑，支持分牌、加倍、保险
-- **钱包服务**: 管理玩家余额和交易（⚠️ 当前使用 MockWalletService）
-- **JWT服务**: 处理JWT令牌的生成、验证和刷新 ✅ *已实现*
-  - ✅ 令牌生成：为认证用户创建JWT，包含session_id、user_id、aggregator_id、game_id等信息
-  - ✅ 令牌验证：验证JWT的有效性和签名
-  - ✅ 自动刷新：支持令牌在过期前自动刷新（2小时过期，1.5小时刷新）
-- **WebSocket处理器**: 管理WebSocket连接、消息路由和事件订阅 ✅ *已实现*
-  - 每个游戏都有独立的 WebSocket 适配器
-  - 统一的事件分发机制
-  - JWT认证：所有WebSocket连接需要有效的JWT令牌
-  - ✅ 连接初始化器系统：支持在连接建立后自动执行初始化逻辑
-  - ✅ TokenRefresher：每分钟检查并自动刷新即将过期的JWT
+  - **✅ 骰子(Dice)服务** - 大小猜测游戏，目标数字范围4-96
+  - **✅ 地雷(Mines)服务** - 扫雷游戏，支持3×3、5×5、7×7网格，逐步揭示和提现，会话恢复和放弃功能
+  - **✅ 21点(Blackjack)服务** - 经典21点，支持分牌、加倍、保险
+- **JWT服务**: 处理JWT令牌的生成、验证和刷新
+  - 令牌生成：包含session_id、user_id、aggregator_id、game_id等
+  - 令牌验证：验证有效性和签名
+  - 自动刷新：2小时过期，1.5小时自动刷新
+- **WebSocket处理器**: 管理连接、消息路由和事件订阅
+  - 每个游戏独立的WebSocket适配器
+  - 统一事件分发机制
+  - JWT认证和自动刷新
+  - 连接初始化系统
+  - 实时余额同步
 - **游戏会话管理**: 维护玩家游戏状态和会话信息
   - 支持 Mines 和 Blackjack 的持久化会话
-- **ID生成器服务**: 基于 Sony Flake 算法的分布式ID生成 ✅ *已实现*
-  - ✅ 64位时间有序ID，支持分布式部署
-  - ✅ 每10毫秒可生成256个ID，性能优秀
-  - ✅ 用于生成内部用户ID、会话ID等
-- **用户映射服务**: 管理聚合器用户ID到内部用户ID的映射 ✅ *已实现*
-  - ✅ 维护 (aggregator_id, external_player_id) → internal_user_id 映射
-  - ✅ 解决不同聚合器间的用户ID冲突问题
-  - ✅ 支持并发安全的用户创建
+- **ID生成器服务**: 基于 Sony Flake 算法的分布式ID生成
+  - 64位时间有序ID，支持分布式部署
+  - 每10毫秒可生成256个ID
+  - 用于生成用户ID、会话ID、回合ID等
+- **用户映射服务**: 管理聚合器用户ID到内部用户ID的映射
+  - 维护 (aggregator_id, external_player_id) → internal_user_id 映射
+  - 解决不同聚合器间的用户ID冲突
+  - 支持并发安全的用户创建
 
 ### 4. **游戏引擎层**
 - **游戏引擎**: 核心游戏逻辑实现，支持多种游戏类型
@@ -202,54 +202,42 @@ sequenceDiagram
 ### 6. **数据存储层**
 - **PostgreSQL**: 存储游戏记录、用户数据、种子信息等持久化数据，同时也存储游戏会话和连接状态信息
 
-## 当前API使用状态
+## API接口体系
 
-### 活跃使用的API ✅
-1. **WebSocket API** - 所有实时游戏交互（游戏前端主要使用）
-2. **Provider API** - `/sessions` 接口用于会话管理
-3. **Aggregator API** - 聚合器管理和配置
-
-### 新增的统一API 🆕
-1. **Game API** (`/api/game/v1/`) - 新的统一游戏接口，为未来迁移准备
-   - 已实现：游戏管理、会话管理、投注服务
-   - 待实现：历史记录服务（需要BetRepo）
-
-### 已停用的API ❌
-1. **game-frontend HTTP/gRPC接口** - 除WebSocket外的其他接口已注释
-2. **game-integration API** - 已完全删除
+### 三大API体系
+1. **Game API** (`/api/game/v1/`) - 统一游戏接口
+   - 认证、会话、种子、历史、公平性验证服务
+   - 支持HTTP/gRPC和WebSocket
+   
+2. **Provider API** (`/api/provider/v1/`) - 游戏聚合器接口
+   - HMAC-SHA256认证
+   - 会话创建、游戏操作、客户端种子生成
+   
+3. **Aggregator API** (`/api/aggregator/v1/`) - 聚合器管理
+   - 主密钥认证
+   - 聚合器CRUD、密钥管理
 
 ## API通信协议详解
 
-### provider/v1 API (Provider接口)
-**用途**: 作为游戏提供商向游戏聚合器（GA）提供的标准化接口
+### Provider API (游戏提供商接口)
+**端口**: 8000
+**认证**: HMAC-SHA256 签名验证
 
-1. **HTTP 协议** (端口 8002)
-   - 认证方式：HMAC-SHA256 签名验证 ✅ *已实现*
-   - 传输格式：JSON
-   - 主要接口：✅ *全部已实现*
-     - 会话管理：CreateSession（返回JWT token）, GetSession
-     - 游戏操作：Play
-     - 余额管理：GetBalance
-     - 交易管理：Rollback（支持幂等）
-     - 游戏信息：GetGames
-   - 特点：
-     - 完整的错误码体系 ✅
-     - 交易日志记录 ✅
-     - 幂等性保证（Rollback） ✅
-     - 结构化日志和监控 ✅
-     - JWT令牌：CreateSession返回JWT token供WebSocket连接使用 ✅
-     - v1.1 更新：
-       - 时间戳字段返回Unix毫秒格式（int64）
-       - 响应字段使用camelCase命名
+**主要功能**:
+- 会话管理：CreateSession、GetSession
+- 游戏操作：Play
+- 种子生成：GenerateClientSeed  
+- IO平台兼容：CreateIOSession
+- 游戏列表：GetGames
 
-2. **增强功能** ✅ *已实现*
-   - 游戏注册表：动态管理游戏配置 (GameRegistry)
-   - 余额缓存：10秒TTL，提高查询性能 (BalanceService)
-   - 请求验证框架：全面的参数和状态验证
-   - 日志系统：RequestLogger, TransactionLogger, GameLogger, SecurityLogger, PerformanceLogger
-   - 错误处理：ProviderError 类型和完整的错误码体系
+**特性**:
+- 完整的错误码体系
+- 游戏注册表动态管理
+- 请求验证框架
+- 结构化日志系统
+- JWT令牌生成供WebSocket使用
 
-### game-frontend API 与服务层交互
+### Game API 与服务层交互
 
 1. **WebSocket 协议** (主要用于实时游戏)
    - 认证方式：JWT令牌验证（连接时通过URL参数token传递）
@@ -271,12 +259,13 @@ sequenceDiagram
    - 用途：
      - 获取游戏配置 (GetDiceGameConfig)
      - 创建服务器种子 (CreateServerSeed)
-     - 查询历史记录 (GetBetHistory) - 包含完整公平性验证信息
+     - 查询历史记录 - 包含完整公平性验证信息
+     - 公平性验证 - 独立验证游戏结果
    - 特点：
      - 请求-响应模式
      - RESTful API 通过 gRPC-Gateway 自动生成
      - 适合状态查询和配置管理
-     - v1.1: 投注响应不再包含 provably_fair 字段
+     - 历史记录接口返回完整的公平性数据
 
 ### 协议选择策略
 
@@ -383,7 +372,6 @@ graph TB
    - **Dice 适配器**: 处理 `DicePlaceBetRequest/Response`
    - **Mines 适配器**: 处理 `MinesPlaceBetRequest`、`MinesRevealTileRequest`、`MinesCashOutRequest` 等
    - **Blackjack 适配器**: 处理 `BlackjackPlaceBetRequest`、`BlackjackPlayerActionRequest`、`BlackjackInsuranceRequest` 等
-   - **v1.1 更新**: 所有游戏适配器的投注响应不再包含 `provably_fair` 字段，公平性验证信息通过历史记录接口获取
 
 4. **事件分发器**
    - 管理客户端的事件订阅（游戏事件、实时统计等）
@@ -465,7 +453,7 @@ graph TB
 
 ### 当前实现的初始化器
 
-#### GameConfigInitializer（优先级: 10） ✅ *已实现*
+#### GameConfigInitializer（优先级: 10）
 - **功能**: 在连接建立后自动发送当前游戏的配置信息
 - **游戏ID来源**（按优先级）:
   1. JWT token 中的 `game_id` 字段
@@ -498,23 +486,39 @@ graph TB
    - 游戏引擎设计支持快速添加新游戏类型
    - 使用Kratos框架提供的中间件机制
 
-4. **安全性（当前状态）**
-   - ✅ **认证机制**：已实现JWT认证系统
-     - Provider API通过HMAC-SHA256签名验证 ✅ *已实现*
-     - WebSocket连接使用JWT令牌认证 ✅ *已实现*
-     - 支持令牌自动刷新机制 ✅ *已实现*
-   - ⚠️ **授权控制**：尚未实现，所有已认证用户可访问所有接口
-   - ⚠️ **传输加密**：未配置 TLS/SSL，数据明文传输
-   - ⚠️ **CORS**：未配置跨域资源共享策略
-   - ✅ **中间件**：使用 recovery 中间件处理 panic，HMAC认证中间件
-   - ⚠️ **API 限流**：未实现请求频率限制
-   - ✅ **输入验证**：依赖 protobuf 的基础类型验证，Provider API有完整的参数验证
+4. **安全性**
+   - **认证机制**：
+     - JWT认证系统（WebSocket和Game API）
+     - HMAC-SHA256签名（Provider API）
+     - 主密钥认证（Aggregator API）
+     - 令牌自动刷新机制
+   - **中间件保护**：
+     - Recovery中间件处理panic
+     - HMAC认证中间件
+     - 输入验证（protobuf类型验证）
+   - **客户端种子安全**：
+     - 强制提供客户端种子（8-256字符）
+     - 提供安全种子生成接口
+   - **并发安全**：
+     - Nonce原子操作（PostgreSQL RETURNING）
+     - 并发安全的用户创建
+     - 双索引缓存机制（Mines游戏）
 
-   **注意**：当前实现适用于开发环境，生产环境需要完善以下安全措施：
-   - 添加基于角色的访问控制（RBAC）
-   - 配置 TLS 证书实现 HTTPS/WSS
-   - 实现 API 限流和防 DDoS 机制
-   - 实现完整的输入验证和清理
+5. **Mines游戏特性**
+   - **网格配置**：支持3×3、5×5、7×7三种网格大小
+   - **会话管理**：
+     - 持久化游戏状态到数据库
+     - 双索引缓存（userID -> roundID，roundID -> instance）
+     - 支持断线重连和游戏恢复
+   - **游戏功能**：
+     - 逐步揭示格子机制
+     - 实时赔率计算
+     - 随时提现功能
+     - 游戏放弃功能
+   - **安全保护**：
+     - 5分钟无活动自动提现
+     - 线性探测处理地雷位置碰撞
+     - 单游戏限制（每玩家一个活跃游戏）
 
 ## 相关文档
 
