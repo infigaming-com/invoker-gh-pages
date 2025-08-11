@@ -1,56 +1,5 @@
 # API 参考 - Invoker Server
 
-## 概述
-
-本文档包含 Invoker Server 的所有 API 接口说明。系统提供三大API体系：
-
-### API 体系
-
-1. **Game API** (`/api/game/v1/`) - 统一游戏接口
-   - 认证、会话、种子、历史、公平性验证服务
-   - JWT Bearer token 认证
-
-2. **Provider API** (`/api/provider/v1/`) - 游戏聚合器接口
-   - 会话创建、游戏操作、客户端种子生成
-   - HMAC-SHA256 签名认证
-
-3. **Aggregator API** (`/api/aggregator/v1/`) - 聚合器管理
-   - 聚合器CRUD、密钥管理
-   - 主密钥认证
-
-### 技术特性
-- 时间戳格式：Unix 毫秒时间戳（int64）
-- 响应字段命名：camelCase
-- 客户端种子：强制提供（8-256字符）
-- Dice target范围：4.0-96.0
-
-## API 认证方式总览
-
-不同的 API 使用不同的认证机制：
-
-1. **Provider API** (`/api/provider/v1/*`) - HMAC-SHA256 签名认证
-2. **Game API** (`/api/game/v1/*`) - JWT Bearer token 认证 
-3. **WebSocket API** (`/v1/ws`) - 通过 LOGIN 消息使用 JWT token
-4. **Aggregator API** (`/api/aggregator/v1/*`) - 主密钥认证（管理接口）
-
-## 重要概念说明
-
-### GameID vs RoundID
-
-在 Invoker Server 中，这两个 ID 有明确的区别：
-
-- **GameID**：游戏类型标识符
-  - 格式：`"inhousegame:游戏名"`
-  - 示例：`"inhousegame:dice"`、`"inhousegame:mines"`、`"inhousegame:blackjack"`
-  - 用途：标识游戏的类型，用于路由和配置选择
-  - 注意：这是行业标准格式，不是游戏实例ID
-
-- **RoundID**：游戏回合标识符  
-  - 格式：唯一的字符串或数字ID
-  - 示例：`"round_123456"`、`"dice_player123_1705762200000"`
-  - 用途：标识具体的一局游戏，用于追踪投注和结果
-  - 生成：每次投注时生成新的 RoundID
-
 ## 目录
 
 1. [Game API](#game-api) - 统一游戏接口
