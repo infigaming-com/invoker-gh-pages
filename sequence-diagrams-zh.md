@@ -7,13 +7,15 @@
 4. [骰子游戏下注序列](#骰子游戏下注序列)
 5. [21点(Blackjack)游戏流程](#21点blackjack游戏流程)
 6. [地雷(Mines)游戏流程](#地雷mines游戏流程)
-7. [事件订阅流程](#事件订阅流程)
-8. [实时投注活动广播流程](#实时投注活动广播流程)
-9. [错误处理场景](#错误处理场景)
-10. [可证明公平验证](#可证明公平验证)
-11. [服务端种子轮换流程](#服务端种子轮换流程)
-12. [集成 API 流程](#集成-api-流程)
-13. [Game Aggregator Provider API 集成](#game-aggregator-provider-api-集成)
+7. [Keno游戏流程](#keno-游戏流程-已实现)
+8. [事件订阅流程](#事件订阅流程)
+9. [实时投注活动广播流程](#实时投注活动广播流程)
+10. [投注活动历史获取流程](#投注活动历史获取流程-已实现)
+11. [错误处理场景](#错误处理场景)
+12. [可证明公平验证](#可证明公平验证)
+13. [服务端种子轮换流程](#服务端种子轮换流程)
+14. [集成 API 流程](#集成-api-流程)
+15. [Game Aggregator Provider API 集成](#game-aggregator-provider-api-集成)
 
 ## 玩家认证流程
 
@@ -781,6 +783,121 @@ sequenceDiagram
     MinesService->>Timer: 清理完成
 ```
 
+## Keno 游戏流程 ✅ 已实现
+
+### 完整游戏流程
+
+```mermaid
+sequenceDiagram
+    participant Player as 玩家
+    participant Client as 客户端
+    participant WSGateway as WS网关
+    participant KenoAdapter as Keno适配器
+    participant KenoService as Keno服务
+    participant KenoEngine as Keno引擎
+    participant Database as 数据库
+    participant EventBus as 事件总线
+    participant Aggregator as 聚合器(io)
+
+    Player->>Client: 选择数字
+    Note over Client: 从1-80中选择5个数字<br/>[1, 15, 33, 45, 67]
+    
+    Client->>Client: 生成客户端种子
+    Note over Client: "keno-seed-123456"
+    
+    Client->>WSGateway: PLACE_BET_REQUEST
+    Note over Client: game_type: "keno"<br/>amount: 100<br/>selectedNumbers: [1,15,33,45,67]
+    
+    WSGateway->>KenoAdapter: 路由到Keno适配器
+    KenoAdapter->>KenoService: PlaceKenoBet
+    
+    KenoService->>KenoService: 验证参数
+    Note over KenoService: 检查数字范围(1-80)<br/>检查数量(1-10个)<br/>检查重复
+
+    KenoService->>Aggregator: 检查余额
+    Aggregator->>KenoService: 余额充足
+    
+    KenoService->>Aggregator: 扣除下注金额
+    Note over Aggregator: 扣除 $100
+    
+    KenoService->>KenoEngine: 生成开奖结果
+    KenoEngine->>Database: 获取服务器种子
+    Database->>KenoEngine: 返回种子+nonce
+    
+    KenoEngine->>KenoEngine: Fisher-Yates洗牌算法
+    Note over KenoEngine: 使用SHA256哈希<br/>生成20个随机数字<br/>[1,3,5,7,15,20,25,30,33,40,45,50,55,60,65,67,70,75,77,80]
+    
+    KenoEngine->>KenoEngine: 计算匹配
+    Note over KenoEngine: 匹配数字: [1,15,33,45,67]<br/>匹配数量: 5/5<br/>赔率: 480×
+    
+    KenoEngine->>KenoService: 游戏结果
+    
+    alt 有中奖
+        KenoService->>Aggregator: 发送奖金
+        Note over Aggregator: 支付 $48000
+    end
+    
+    KenoService->>Database: 保存游戏结果
+    Note over Database: 保存选择数字、开奖数字<br/>匹配结果、赔率等
+    
+    KenoService->>Database: 更新nonce
+    
+    KenoService->>EventBus: 发布游戏结果
+    
+    KenoService->>KenoAdapter: 返回结果
+    KenoAdapter->>WSGateway: PLACE_BET_RESPONSE
+    WSGateway->>Client: 显示结果
+    
+    Client->>Player: 展示开奖动画
+    Note over Player: 显示20个开奖数字<br/>高亮匹配的数字<br/>显示赔率和奖金
+    
+    EventBus->>WSGateway: 广播游戏事件
+    WSGateway->>Client: GAME_EVENT推送
+```
+
+### 快速选号流程
+
+```mermaid
+sequenceDiagram
+    participant Player as 玩家
+    participant Client as 客户端
+    participant WSGateway as WS网关
+    participant KenoAdapter as Keno适配器
+    participant KenoService as Keno服务
+
+    Player->>Client: 点击快速选号
+    Note over Client: 选择要随机的数量: 5
+    
+    Client->>WSGateway: KENO_QUICK_PICK
+    Note over Client: spotCount: 5
+    
+    WSGateway->>KenoAdapter: 路由请求
+    KenoAdapter->>KenoService: QuickPick(5)
+    
+    KenoService->>KenoService: 生成随机数字
+    Note over KenoService: 使用crypto/rand<br/>生成5个不重复数字<br/>[12, 28, 45, 61, 77]
+    
+    KenoService->>KenoAdapter: 返回数字
+    KenoAdapter->>WSGateway: KENO_QUICK_PICK_RESPONSE
+    WSGateway->>Client: 显示选中数字
+    
+    Client->>Player: 更新UI
+    Note over Player: 自动选中数字<br/>可继续调整
+```
+
+### Keno游戏特点
+
+| 特性 | 说明 |
+|------|------|
+| 游戏类型 | 即时游戏，无需会话管理 |
+| 数字范围 | 1-80 |
+| 选择数量 | 1-10个数字 |
+| 开奖数量 | 20个数字 |
+| 随机算法 | Fisher-Yates洗牌 |
+| 可证明公平 | SHA256 + 客户端种子 |
+| 赔率计算 | 基于选择数量和匹配数量 |
+| 最高赔率 | 50000× (选10中10) |
+
 ## 事件订阅流程
 
 ```mermaid
@@ -991,6 +1108,150 @@ sequenceDiagram
     EventDispatcher->>AllClients: 广播大赢事件
     AllClients->>AllClients: 显示庆祝动画
     Note over AllClients: 特殊效果展示<br/>营造氛围
+```
+
+## 投注活动历史获取流程 ✅ 已实现
+
+### GET_BET_ACTIVITIES 请求流程
+
+```mermaid
+sequenceDiagram
+    participant Player as 玩家（新连接）
+    participant Client as 客户端
+    participant WSGateway as WS网关
+    participant Handler as 消息处理器
+    participant BetBroadcaster as 投注广播器
+    participant Buffer as 环形缓冲区
+
+    Player->>Client: 打开游戏大厅
+    Client->>WSGateway: 建立WebSocket连接
+    Note over Client: 无需认证
+    
+    WSGateway->>Client: 连接确认
+    
+    Client->>Client: 请求历史投注活动
+    Note over Client: 显示游戏热度
+    
+    Client->>WSGateway: GET_BET_ACTIVITIES
+    Note over Client: {<br/>  gameId: "inhousegame:dice",<br/>  limit: 50<br/>}
+    
+    WSGateway->>Handler: 路由消息
+    
+    Handler->>Handler: 验证参数
+    Note over Handler: gameId 必需<br/>limit 1-100
+    
+    alt gameId 缺失
+        Handler->>WSGateway: 错误响应
+        Note over Handler: MISSING_GAME_ID
+        WSGateway->>Client: 参数错误
+    else 参数有效
+        Handler->>BetBroadcaster: GetRecentActivities
+        Note over Handler: gameId: "inhousegame:dice"<br/>limit: 50
+        
+        BetBroadcaster->>Buffer: GetRecent(200)
+        Note over Buffer: 获取最近200条
+        
+        Buffer->>Buffer: 读取环形缓冲区
+        Note over Buffer: O(1)时间复杂度<br/>返回按时间倒序
+        
+        Buffer->>BetBroadcaster: 返回活动列表
+        
+        BetBroadcaster->>BetBroadcaster: 过滤游戏ID
+        Note over BetBroadcaster: 只返回dice游戏<br/>包含所有货币
+        
+        BetBroadcaster->>BetBroadcaster: 限制数量
+        Note over BetBroadcaster: 最多返回50条
+        
+        BetBroadcaster->>Handler: 过滤后的活动
+        
+        Handler->>WSGateway: GET_BET_ACTIVITIES_RESPONSE
+        WSGateway->>Client: 返回历史活动
+        
+        Client->>Player: 显示投注活动
+        Note over Player: 展示游戏热度<br/>其他玩家投注情况
+    end
+    
+    Note over Client: 订阅实时推送
+    Client->>WSGateway: SUBSCRIBE
+    Note over Client: eventTypes: ["BET_ACTIVITY"]
+    
+    WSGateway->>Client: 订阅成功
+    
+    Note over Client: 开始接收实时活动
+```
+
+### 混合推拉模式工作流程
+
+```mermaid
+sequenceDiagram
+    participant NewPlayer as 新玩家
+    participant OldPlayer as 老玩家
+    participant WSGateway as WS网关
+    participant BetBroadcaster as 投注广播器
+    participant RingBuffer as 环形缓冲区
+    participant EventBus as 事件总线
+
+    Note over NewPlayer,OldPlayer: 新老玩家不同流程
+    
+    rect rgb(200, 230, 201)
+        Note over NewPlayer: 新玩家连接流程
+        NewPlayer->>WSGateway: 建立连接
+        NewPlayer->>WSGateway: GET_BET_ACTIVITIES
+        WSGateway->>BetBroadcaster: 请求历史
+        BetBroadcaster->>RingBuffer: 读取缓存
+        RingBuffer-->>BetBroadcaster: 历史数据
+        BetBroadcaster-->>WSGateway: 返回历史
+        WSGateway-->>NewPlayer: 显示历史活动
+        
+        NewPlayer->>WSGateway: 订阅实时事件
+        WSGateway->>EventBus: 注册订阅
+    end
+    
+    rect rgb(200, 201, 230)
+        Note over OldPlayer: 老玩家已连接
+        Note over OldPlayer: 已订阅实时事件
+    end
+    
+    Note over BetBroadcaster: 新投注产生
+    
+    BetBroadcaster->>RingBuffer: 添加到缓存
+    Note over RingBuffer: 保存最近200条
+    
+    BetBroadcaster->>EventBus: 推送新活动
+    
+    par 并行推送
+        EventBus->>NewPlayer: 实时活动推送
+        NewPlayer->>NewPlayer: 更新显示
+    and
+        EventBus->>OldPlayer: 实时活动推送
+        OldPlayer->>OldPlayer: 更新显示
+    end
+```
+
+### 环形缓冲区实现细节
+
+```mermaid
+graph LR
+    subgraph "环形缓冲区 (容量=5)"
+        A[索引0] --> B[索引1]
+        B --> C[索引2]
+        C --> D[索引3]
+        D --> E[索引4]
+        E --> A
+    end
+    
+    subgraph "写入过程"
+        W1[head=0<br/>写入Act1] --> W2[head=1<br/>写入Act2]
+        W2 --> W3[head=2<br/>写入Act3]
+        W3 --> W4[head=3<br/>写入Act4]
+        W4 --> W5[head=4<br/>写入Act5]
+        W5 --> W6[head=0<br/>覆盖Act1<br/>写入Act6]
+    end
+    
+    subgraph "读取过程"
+        R1[从head-1开始] --> R2[向前读取N个]
+        R2 --> R3[返回倒序列表]
+    end
 ```
 
 ## 错误处理场景

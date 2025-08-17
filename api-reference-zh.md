@@ -500,11 +500,55 @@ interface DiceGameConfig {
 - 该字段现在是必填字段，所有货币都有明确的类型标识
 
 **其他游戏配置结构**:
-其他游戏（如 Mines、Blackjack）的配置结构类似，但会有各自特定的游戏参数。基本结构包含：
+其他游戏（如 Mines、Blackjack、Keno）的配置结构类似，但会有各自特定的游戏参数。基本结构包含：
 - 基本信息（id、gameId、gameName 等）
 - 下注限制（betInfo 数组）
 - RTP 配置
 - 游戏特定参数
+
+**Keno 游戏配置示例**:
+```json
+{
+  "gameId": "inhousegame:keno",
+  "config": {
+    "id": 2000006,
+    "gameId": "inhousegame:keno",
+    "gameName": "Keno",
+    "category": "instant",
+    "status": "active",
+    "description": "Classic lottery-style instant game with up to 10 number selections",
+    "thumbnail": "/games/keno/thumbnail.png",
+    "betInfo": [
+      {
+        "currency": "USD",
+        "currencyType": "fiat",
+        "defaultBet": 1.0,
+        "minBet": 0.1,
+        "maxBet": 1000
+      }
+    ],
+    "minBet": 0.1,
+    "maxBet": 1000,
+    "rtp": 75.0,  // Keno通常RTP较低（70-80%）
+    "features": ["provably_fair", "instant_play", "quick_pick"],
+    "defaultRtp": "75%",
+    "betRange": "0.1,1000",
+    "maxRewardMultiplier": 100000,  // 最高10万倍（选10中10）
+    "gameParameters": {
+      "numberPool": {
+        "min": 1,
+        "max": 40    // 实际系统支持1-80，但当前限制为1-40
+      },
+      "spotRange": {
+        "min": 1,     // 最少选1个数字
+        "max": 10     // 最多选10个数字
+      },
+      "drawnNumbers": 10,  // 系统开出10个中奖号码
+      "quickPickEnabled": true  // 支持快速选号
+    }
+  }
+}
+```
 
 
 
@@ -952,6 +996,65 @@ socket.on('message', (data) => {
   "data": "{\"game_id\": \"bj_abc123\", \"take_insurance\": true}"
 }
 ```
+
+#### Keno 游戏 WebSocket 消息 ✅ 已实现
+
+**开始游戏（使用通用 PLACE_BET_REQUEST）**:
+```json
+{
+  "id": "msg_300",
+  "type": "PLACE_BET_REQUEST",
+  "payload": {
+    "amount": "100.0",
+    "gameParams": {
+      "keno": {
+        "selectedNumbers": [1, 5, 10, 15, 20]  // 选择的数字（1-80），必须包含1-10个不重复的号码
+      }
+    },
+    "clientSeed": "player-chosen-seed-789"  // 必需：8-256字符
+  }
+}
+```
+
+> **注意**: 快速选号（Quick Pick）功能已移至客户端处理，服务端只负责验证号码的合法性。客户端可自行实现随机选号功能，然后通过 `selectedNumbers` 字段发送选中的号码。
+
+**响应消息（PLACE_BET_RESPONSE）**:
+```json
+{
+  "id": "msg_302",
+  "type": "PLACE_BET_RESPONSE",
+  "payload": {
+    "betId": "123456789012345678",
+    "gameResult": {
+      "gameId": "inhousegame:keno",
+      "betAmount": "100.0",
+      "winAmount": "200.0",
+      "isWin": true,
+      "gameOutcome": {
+        "kenoOutcome": {
+          "selectedNumbers": [1, 5, 10, 15, 20],  // 玩家选择的数字
+          "drawnNumbers": [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39],  // 系统开出的20个数字
+          "matchedNumbers": [1, 5, 15],  // 匹配的数字
+          "matchCount": 3,  // 匹配数量
+          "spotsCount": 5,  // 选择的数字数量
+          "multiplier": "2.0"  // 赔率
+        }
+      },
+      "multiplier": "2.0",
+      "timestamp": 1640995200000
+    },
+    "balance": "1100.0"
+  }
+}
+```
+
+**注意事项**:
+1. **即时游戏**: Keno是即时游戏，一次下注立即完成，无需会话管理
+2. **数字范围**: 选择的数字必须在1-80范围内
+3. **选择数量**: 可选择1-10个数字
+4. **快速选号**: 支持系统自动随机选择指定数量的数字
+5. **赔率计算**: 根据选择数量和匹配数量查询赔率表
+6. **RoundID格式**: 纯数字字符串，使用Sony Flake ID生成器
 
 ## 错误代码
 

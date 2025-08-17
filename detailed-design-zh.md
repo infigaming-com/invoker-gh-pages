@@ -659,6 +659,104 @@ func (b *BetActivityInitializer) Priority() int {
 > - 已登录用户保持原有的初始化器机制
 > - 通过重复检测避免多次订阅同一事件
 
+#### 历史数据缓存机制 ✅ *新增*
+
+为了支持新用户快速获取最近的投注活动，系统实现了环形缓冲区（Ring Buffer）来缓存历史数据：
+
+##### RecentActivityBuffer 设计
+
+```go
+type RecentActivityBuffer struct {
+    activities []*v1.BetActivityEvent
+    capacity   int        // 默认200条
+    head       int        // 写入位置
+    size       int        // 当前大小
+    mutex      sync.RWMutex
+}
+
+// 添加新活动（O(1)时间复杂度）
+func (r *RecentActivityBuffer) Add(activity *v1.BetActivityEvent) {
+    r.mutex.Lock()
+    defer r.mutex.Unlock()
+    
+    r.activities[r.head] = activity
+    r.head = (r.head + 1) % r.capacity
+    
+    if r.size < r.capacity {
+        r.size++
+    }
+}
+
+// 获取最近的N条活动
+func (r *RecentActivityBuffer) GetRecent(limit int) []*v1.BetActivityEvent {
+    r.mutex.RLock()
+    defer r.mutex.RUnlock()
+    
+    if limit > r.size {
+        limit = r.size
+    }
+    
+    result := make([]*v1.BetActivityEvent, 0, limit)
+    // 从最新的开始返回
+    for i := 0; i < limit; i++ {
+        idx := (r.head - 1 - i + r.capacity) % r.capacity
+        if r.activities[idx] != nil {
+            result = append(result, r.activities[idx])
+        }
+    }
+    return result
+}
+```
+
+##### 混合推拉模式
+
+系统采用推（Push）和拉（Pull）相结合的混合模式：
+
+1. **拉模式（GET_BET_ACTIVITIES）**
+   - 客户端主动请求历史数据
+   - 适用于新连接的用户
+   - 不需要认证，支持游客查看
+   - 按游戏ID过滤，显示所有货币
+
+2. **推模式（实时事件）**
+   - 服务端主动推送新活动
+   - 适用于已连接的用户
+   - 通过订阅机制管理
+   - 批量推送优化性能
+
+```mermaid
+sequenceDiagram
+    participant C as 客户端
+    participant WS as WebSocket服务器
+    participant BA as BetActivityBroadcaster
+    participant RB as RecentActivityBuffer
+    
+    Note over C,RB: 新用户连接流程
+    C->>WS: 建立WebSocket连接
+    C->>WS: GET_BET_ACTIVITIES请求
+    WS->>BA: GetRecentActivities(gameId, limit)
+    BA->>RB: GetRecent(limit)
+    RB-->>BA: 历史活动列表
+    BA-->>WS: 过滤后的活动
+    WS-->>C: 返回历史活动
+    
+    Note over C,RB: 实时推送流程
+    C->>WS: 订阅BET_ACTIVITY事件
+    BA->>RB: Add(新活动)
+    BA->>WS: 批量推送新活动
+    WS-->>C: 实时活动事件
+```
+
+##### 配置参数
+
+```yaml
+game:
+  bet_broadcast:
+    history_buffer_size: 200    # 历史缓存大小
+    default_query_limit: 50     # 默认查询数量
+    max_query_limit: 100        # 最大查询数量
+```
+
 #### 监控指标
 
 | 指标名称 | 描述 | 告警阈值 |
@@ -668,6 +766,8 @@ func (b *BetActivityInitializer) Priority() int {
 | total_dropped | 总丢弃投注数 | > 1% |
 | queue_utilization | 队列使用率 | > 80% |
 | batch_size_avg | 平均批次大小 | < 5 |
+| buffer_hit_rate | 缓存命中率 | < 90% |
+| query_latency_p99 | 查询延迟P99 | > 100ms |
 
 ### 连接状态管理
 
@@ -1917,6 +2017,238 @@ Dice游戏支持两种玩法模式：
 2. 显示潜在赢利金额（投注金额 × 赔率）
 3. 显示当前获胜概率百分比
 4. 使用滑块或输入框让玩家调整目标值
+
+### Keno（基诺）游戏 ✅ 已实现
+
+#### 游戏规则
+
+Keno是一种类似彩票的即时游戏：
+
+1. **数字选择**：玩家从1-80的数字池中选择1-10个数字（称为spots）
+2. **系统开奖**：系统随机抽取20个中奖数字
+3. **结果判定**：根据玩家选中的数字与开奖数字的匹配数量决定赔率
+4. **快速选号**：支持系统自动随机选择数字
+
+#### 赔率计算公式
+
+Keno的赔率基于选择数量（spots）和匹配数量（hits）的组合：
+
+**赔率表（最新版本，包含0匹配奖励）**：
+
+| 选择数量 | 匹配数量 | 理论概率 | 实际赔率 | 说明 |
+|---------|---------|----------|----------|------|
+| 1 | 1 | 25.00% | 3× | - |
+| 2 | 2 | 6.01% | 12× | - |
+| 3 | 2 | 13.88% | 1× | - |
+| 3 | 3 | 1.39% | 42× | - |
+| 4 | 2 | 16.30% | 1× | - |
+| 4 | 3 | 4.32% | 5× | - |
+| 4 | 4 | 0.31% | 120× | - |
+| 5 | 3 | 8.39% | 2× | - |
+| 5 | 4 | 1.21% | 20× | - |
+| 5 | 5 | 0.06% | 480× | - |
+| 6 | 3 | 12.98% | 1× | - |
+| 6 | 4 | 2.85% | 5× | - |
+| 6 | 5 | 0.31% | 90× | - |
+| 6 | 6 | 0.01% | 1500× | - |
+| 7 | 3 | 17.45% | 1× | - |
+| 7 | 4 | 5.22% | 2× | - |
+| 7 | 5 | 0.86% | 20× | - |
+| 7 | 6 | 0.07% | 300× | - |
+| 7 | 7 | 0.002% | 5000× | - |
+| **8** | **0** | **4.33%** | **1×** | **安慰奖** |
+| 8 | 4 | 8.15% | 2× | - |
+| 8 | 5 | 1.83% | 10× | - |
+| 8 | 6 | 0.24% | 100× | - |
+| 8 | 7 | 0.016% | 1500× | - |
+| 8 | 8 | 0.0004% | 10000× | - |
+| **9** | **0** | **4.61%** | **1×** | **安慰奖** |
+| 9 | 4 | 11.43% | 1× | - |
+| 9 | 5 | 3.26% | 5× | - |
+| 9 | 6 | 0.57% | 30× | - |
+| 9 | 7 | 0.059% | 300× | - |
+| 9 | 8 | 0.003% | 3000× | - |
+| 9 | 9 | 0.00007% | 25000× | - |
+| **10** | **0** | **4.58%** | **2×** | **安慰奖** |
+| 10 | 5 | 5.14% | 2× | - |
+| 10 | 6 | 1.15% | 20× | - |
+| 10 | 7 | 0.16% | 100× | - |
+| 10 | 8 | 0.014% | 500× | - |
+| 10 | 9 | 0.0006% | 5000× | - |
+| 10 | 10 | 0.00001% | **100000×** | **最高奖** |
+
+**重要特性**：
+1. **0匹配安慰奖**：选择8-10个号码时，如果一个都没中，也会获得奖励
+   - 选8个，0个匹配：1倍（返还本金）
+   - 选9个，0个匹配：1倍（返还本金）
+   - 选10个，0个匹配：2倍（双倍返还）
+2. **最高赔率提升**：选10个全中从50000倍提升至100000倍，增加游戏吸引力
+3. **概率平衡**：0匹配的概率约4.5%，既不会频繁触发，又能给玩家"安慰"
+4. **庄家优势**：即使有0匹配奖励，整体庄家优势仍保持在25-30%
+- 不同赌场的赔率表可能有所不同
+
+#### 概率计算公式
+
+匹配k个数字的概率计算：
+
+```
+P(X = k) = C(m, k) × C(80-m, n-k) / C(80, n)
+```
+
+其中：
+- m = 玩家选择的数字数量
+- n = 20（系统抽取的数字数量）
+- k = 匹配的数字数量
+- C(n, k) = 组合数（从n个中选k个）
+
+#### 随机数生成算法
+
+使用可证明公平的Fisher-Yates洗牌算法从1-80中抽取20个不重复数字：
+
+```go
+func DrawKenoNumbers(clientSeed, serverSeed string, nonce int64) []int {
+    // 1. 生成种子哈希
+    seedStr := fmt.Sprintf("%s:%s:%d:keno", clientSeed, serverSeed, nonce)
+    hash := sha256.Sum256([]byte(seedStr))
+    
+    // 2. 初始化数字池（1-80）
+    numbers := make([]int, 80)
+    for i := 0; i < 80; i++ {
+        numbers[i] = i + 1
+    }
+    
+    // 3. Fisher-Yates洗牌抽取前20个
+    for i := 0; i < 20; i++ {
+        // 使用哈希生成随机索引
+        hashOffset := i * 4
+        randomBytes := hash[hashOffset:hashOffset+4]
+        randomIndex := binary.BigEndian.Uint32(randomBytes) % uint32(80-i)
+        
+        // 交换
+        numbers[i], numbers[i+int(randomIndex)] = numbers[i+int(randomIndex)], numbers[i]
+    }
+    
+    // 4. 返回前20个数字并排序
+    result := numbers[:20]
+    sort.Ints(result)
+    return result
+}
+```
+
+#### 游戏流程
+
+1. **玩家选择数字**
+   - 手动选择1-10个数字
+   - 或使用快速选号功能
+
+2. **下注**
+   - 验证选择的数字数量（1-10个）
+   - 验证数字范围（1-80）
+   - 验证下注金额
+
+3. **开奖**
+   - 使用可证明公平算法生成20个随机数字
+   - 计算匹配数量
+
+4. **结算**
+   - 根据赔率表计算奖金
+   - 更新余额
+
+#### 前端实现建议
+
+1. **数字选择界面**
+   - 8×10的数字网格（1-80）
+   - 显示已选择的数字数量
+   - 快速选号按钮
+
+2. **赔率显示**
+   - 根据选择的数字数量动态显示赔率表
+   - 高亮显示当前选择对应的所有可能赔率
+
+3. **开奖动画**
+   - 逐个展示20个开奖数字
+   - 匹配的数字特殊高亮
+   - 显示最终匹配数量和赔率
+
+4. **历史记录**
+   - 显示玩家选择的数字
+   - 显示开奖数字
+   - 显示匹配情况和赔率
+
+#### 系统实现细节
+
+##### 1. 服务架构
+```go
+// internal/service/games/keno_service.go
+type KenoService struct {
+    gameRepo     GameRepository
+    userRepo     UserRepository 
+    seedService  ServerSeedService
+    engineConfig *engine.Config
+}
+```
+
+##### 2. 核心数据结构
+```go
+// api/game/v1/keno.proto
+message KenoParams {
+    repeated int32 selected_numbers = 1;  // 玩家选择的数字（1-10个）
+}
+
+message KenoOutcome {
+    repeated int32 selected_numbers = 1;  // 玩家选择的数字
+    repeated int32 drawn_numbers = 2;     // 系统开出的20个数字
+    repeated int32 matched_numbers = 3;   // 匹配的数字
+    int32 selected_count = 4;             // 选择数量
+    int32 matched_count = 5;              // 匹配数量
+    string payout = 6;                    // 赔率倍数
+}
+```
+
+##### 3. WebSocket接口集成
+- **消息类型**: `PLACE_BET` with `kenoParams`
+- **无需会话管理**: Keno是即时游戏，一次请求完成所有操作
+- **RoundID生成**: 使用Sony Flake ID生成器，纯数字格式
+
+##### 4. 验证规则
+```go
+func ValidateKenoParams(params *v1.KenoParams) error {
+    // 数量验证：1-10个
+    if len(params.SelectedNumbers) < 1 || len(params.SelectedNumbers) > 10 {
+        return ErrInvalidNumberCount
+    }
+    
+    // 范围验证：1-40
+    for _, num := range params.SelectedNumbers {
+        if num < 1 || num > 40 {
+            return ErrInvalidNumberRange
+        }
+    }
+    
+    // 重复验证
+    seen := make(map[int32]bool)
+    for _, num := range params.SelectedNumbers {
+        if seen[num] {
+            return ErrDuplicateNumbers
+        }
+        seen[num] = true
+    }
+    return nil
+}
+```
+
+##### 5. 性能优化
+- **预计算赔率表**: 启动时加载所有赔率组合到内存
+- **批量处理**: 支持并发处理多个Keno投注
+- **缓存优化**: 使用LRU缓存最近的游戏结果
+
+##### 6. 监控指标
+| 指标名称 | 描述 | 告警阈值 |
+|---------|------|----------|
+| keno_bet_count | 总投注数 | - |
+| keno_win_rate | 中奖率 | 异常偏离30% |
+| keno_avg_payout | 平均赔付 | > 1.5x |
+| keno_processing_time | 处理时间 | > 100ms |
 
 ---
 
