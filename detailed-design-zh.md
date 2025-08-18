@@ -886,7 +886,7 @@ type ServerSeed struct {
     SeedValue        string `gorm:"column:seed_value;not null"`                        // 服务端种子值
     SeedHash         string `gorm:"column:seed_hash;not null"`                         // 种子哈希（公开）
     CurrentNonce     int64  `gorm:"column:current_nonce;default:0"`                    // 当前nonce值
-    IsActive         bool   `gorm:"column:is_active;default:true"`                     // 是否为活跃种子
+    Status           string `gorm:"column:status;type:varchar(20);default:'pending'"` // 种子状态:pending/active/revealed
     TotalBets        int64  `gorm:"column:total_bets;default:0"`                       // 使用该种子的总投注次数
     RevealedAt       *int64 `gorm:"column:revealed_at;type:bigint"`                    // 种子揭示时间（Unix时间戳）
     ReplacedBySeedID *int64 `gorm:"column:replaced_by_seed_id"`                        // 被哪个种子替换
@@ -895,7 +895,7 @@ type ServerSeed struct {
 ```
 
 > ✅ **安全升级**（2025年1月）：
-> - 添加种子生命周期管理字段（is_active、total_bets、revealed_at）
+> - 添加种子生命周期管理字段（status、total_bets、revealed_at）
 > - 时间字段改为 bigint 类型，与其他表保持一致
 > - 支持种子轮换和安全揭示机制
 
@@ -1884,7 +1884,7 @@ stateDiagram-v2
 #### 1. 种子创建
 - 生成随机种子值
 - 计算并存储种子哈希（SHA256）
-- 标记为活跃状态（is_active = true）
+- 标记为活跃状态（status = 'active'）
 - 初始化统计信息（total_bets = 0, current_nonce = 0）
 
 #### 2. 种子使用
@@ -1895,7 +1895,7 @@ stateDiagram-v2
 
 #### 3. 种子轮换
 - 创建新的活跃种子
-- 将旧种子标记为非活跃（is_active = false）
+- 将旧种子标记为已揭示（status = 'revealed'）
 - 记录揭示时间（revealed_at）
 - 设置替换关系（replaced_by_seed_id）
 - 返回旧种子的原始值供验证
@@ -1939,8 +1939,8 @@ stateDiagram-v2
    - 减少主流程的响应时间
 
 2. **索引优化**
-   - user_id + is_active 复合索引
-   - 快速查询用户的活跃种子
+   - user_id + game_id 复合索引
+   - 快速查询用户在特定游戏的种子
 
 3. **ID 生成器**
    - 使用 Sony Flake 生成种子ID
