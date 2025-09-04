@@ -941,17 +941,6 @@ socket.on('message', (data) => {
 }
 ```
 
-**放弃游戏（MINES_ABANDON_GAME）**:
-```json
-{
-  "id": "msg_128",
-  "type": "MINES_ABANDON_GAME",
-  "payload": {
-    "roundId": "inhousegame:mines:123456"
-  }
-}
-```
-
 **注意事项**:
 1. **RoundID 格式**: 纯数字字符串（如 `"123456789012345678"`）- 使用 Sony Flake ID 生成器生成的唯一标识
 2. **客户端种子**: 必须提供，8-256字符，无默认值

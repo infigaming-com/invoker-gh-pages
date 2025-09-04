@@ -688,50 +688,6 @@ sequenceDiagram
     end
 ```
 
-### 游戏放弃流程
-
-```mermaid
-sequenceDiagram
-    participant Player as 玩家
-    participant Client as 客户端
-    participant WSGateway as WS网关
-    participant MinesAdapter as Mines适配器
-    participant MinesService as Mines服务
-    participant Database as 数据库
-    participant Cache as 内存缓存
-
-    Note over Player: 决定放弃当前游戏
-    
-    Player->>Client: 点击"放弃游戏"
-    Client->>WSGateway: MINES_ABANDON_GAME
-    Note over Client: roundId: "inhousegame:mines:123"
-    
-    WSGateway->>MinesAdapter: 处理放弃请求
-    MinesAdapter->>MinesService: AbandonGame(roundID, userID)
-    
-    MinesService->>Cache: 获取游戏实例
-    Cache->>MinesService: 返回实例
-    
-    MinesService->>MinesService: 验证用户权限
-    Note over MinesService: 确认userID匹配
-    
-    MinesService->>Database: 更新游戏状态
-    Note over Database: 更新字段:<br/>status = "completed"<br/>total_payout = 0<br/>completed_at = now()
-    
-    Database->>MinesService: 更新完成
-    
-    MinesService->>Cache: 移除游戏实例
-    Note over Cache: 清理双索引:<br/>删除 userID -> roundID<br/>删除 roundID -> instance
-    
-    MinesService->>MinesAdapter: 游戏已放弃
-    MinesAdapter->>WSGateway: MINES_ABANDON_GAME_RESPONSE
-    Note over WSGateway: success: true
-    
-    WSGateway->>Client: 确认放弃
-    Client->>Player: 返回游戏大厅
-    
-    Note over Player: 游戏已放弃<br/>无赔付
-```
 
 ### 自动提现流程
 

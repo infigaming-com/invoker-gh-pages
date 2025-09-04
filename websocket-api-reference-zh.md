@@ -152,16 +152,14 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 
 ### 2.3 GET_BALANCE - 获取余额
 
-获取当前玩家余额。
+获取当前玩家余额。系统自动使用会话创建时的币种，无需在请求中指定。
 
 **请求消息**：
 ```json
 {
   "i": "msg_003",
   "t": "GET_BALANCE",
-  "p": {
-    "currency": "USD"  // 可选，不提供则使用默认货币
-  }
+  "p": {}  // 无需currency字段，自动使用会话币种
 }
 ```
 
@@ -289,7 +287,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "p": {
     "activities": [
       {
-        "betId": "bet_123",
+        "roundId": "bet_123",
         "playerId": "player_456",
         "playerName": "Alice***",
         "gameId": "inhousegame:dice",
@@ -335,7 +333,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 
 ### 3.1 PLACE_BET - 下注
 
-发起 Dice 游戏下注。
+发起 Dice 游戏下注。支持试玩模式（amount为空或"0"）。
 
 **请求消息**：
 ```json
@@ -343,7 +341,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "i": "msg_007",
   "t": "PLACE_BET",
   "p": {
-    "amount": "10.00",
+    "amount": "10.00",  // 可选：空字符串""或"0"表示试玩模式
     "gameParams": {
       "diceParams": {
         "target": 50,      // 目标数字 (4-96)
@@ -361,7 +359,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "i": "msg_007",
   "t": "PLACE_BET",
   "p": {
-    "betId": "bet_789",
+    "roundId": "bet_789",
     "gameResult": {
       "gameId": "inhousegame:dice",
       "betAmount": "10.00",
@@ -405,7 +403,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "p": {
     "history": [
       {
-        "betId": "bet_789",
+        "roundId": "bet_789",
         "gameId": "inhousegame:dice",
         "betAmount": "10.00",
         "winAmount": "20.00",
@@ -448,14 +446,14 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "i": "msg_009",
   "t": "PLACE_BET",
   "p": {
-    "betId": "bet_mines_123",
+    "roundId": "bet_mines_123",
     "gameResult": {
       "gameId": "inhousegame:mines",
       "betAmount": "10.00",
       "winAmount": "0",
       "isWin": false,
       "minesOutcome": {
-        "gameId": "game_mines_456",
+        "roundId": "game_mines_456",
         "status": "in_progress",
         "minesCount": 5,
         "gridType": "5x5",
@@ -481,7 +479,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "i": "msg_010",
   "t": "MINES_REVEAL_TILE",
   "p": {
-    "gameId": "game_mines_456",
+    "roundId": "game_mines_456",  // 使用roundId而非gameId  
     "tileIndex": 12  // 格子索引 (0-24 for 5x5)
   }
 }
@@ -495,7 +493,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "p": {
     "isMine": false,
     "gameState": {
-      "gameId": "game_mines_456",
+      "roundId": "game_mines_456",
       "status": "in_progress",
       "betAmount": "10.00",
       "minesCount": 5,
@@ -519,7 +517,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "p": {
     "isMine": true,
     "gameState": {
-      "gameId": "game_mines_456",
+      "roundId": "game_mines_456",
       "status": "lost",
       "betAmount": "10.00",
       "minesCount": 5,
@@ -555,7 +553,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "i": "msg_011",
   "t": "MINES_CASH_OUT",
   "p": {
-    "gameId": "game_mines_456"
+    "roundId": "game_mines_456"  // 使用roundId而非gameId
   }
 }
 ```
@@ -568,7 +566,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "p": {
     "payout": "15.60",
     "gameState": {
-      "gameId": "game_mines_456",
+      "roundId": "game_mines_456",
       "status": "cashed_out",
       "betAmount": "10.00",
       "minesCount": 5,
@@ -617,7 +615,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "t": "MINES_GET_STATE",
   "p": {
     "gameState": {
-      "gameId": "game_mines_456",
+      "roundId": "game_mines_456",
       "status": "in_progress",
       "betAmount": "10.00",
       "minesCount": 5,
@@ -655,7 +653,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
     "hasActiveGame": true,
     "gameId": "game_mines_456",
     "gameState": {
-      "gameId": "game_mines_456",
+      "roundId": "game_mines_456",
       "status": "in_progress",
       "betAmount": "10.00",
       "minesCount": 5,
@@ -692,7 +690,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "p": {
     "success": true,
     "gameState": {
-      "gameId": "game_mines_456",
+      "roundId": "game_mines_456",
       "status": "in_progress",
       "betAmount": "10.00",
       "minesCount": 5,
@@ -708,44 +706,6 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 }
 ```
 
-### 4.7 MINES_ABANDON_GAME - 放弃游戏
-
-放弃当前 Mines 游戏（不提现）。
-
-**请求消息**：
-```json
-{
-  "i": "msg_015",
-  "t": "MINES_ABANDON_GAME",
-  "p": {
-    "gameId": "game_mines_456"
-  }
-}
-```
-
-**响应消息**：
-```json
-{
-  "i": "msg_015",
-  "t": "MINES_ABANDON_GAME",
-  "p": {
-    "success": true,
-    "message": "游戏已放弃",
-    "result": {
-      "minePositions": [3, 7, 15, 18, 22],
-      "safeTilesRevealed": 2,
-      "finalMultiplier": "0",
-      "payout": "0",
-      "provablyFair": {
-        "clientSeed": "user_random_seed_456",
-        "serverSeed": "server_seed_revealed",
-        "hashedServerSeed": "hash_abc123",
-        "nonce": 1
-      }
-    }
-  }
-}
-```
 
 ## 5. Keno 游戏接口
 
@@ -776,7 +736,7 @@ Keno是一个即时开奖的数字彩票游戏。玩家从1-40中选择1-10个�
   "i": "msg_501",
   "t": "PLACE_BET_RESPONSE",
   "p": {
-    "betId": "keno_bet_789",
+    "roundId": "keno_bet_789",
     "gameResult": {
       "gameId": "inhousegame:keno",
       "betAmount": "10.00",
@@ -860,7 +820,7 @@ Plinko是一个经典的弹珠台游戏。球从顶部落下，经过多排钉�
   "i": "msg_601",
   "t": "PLACE_BET_RESPONSE",
   "p": {
-    "betId": "plinko_bet_789",
+    "roundId": "plinko_bet_789",
     "gameResult": {
       "gameId": "inhousegame:plinko",
       "betAmount": "10.00",
@@ -1183,11 +1143,277 @@ HiLo是一个经典的高低牌游戏。玩家需要预测下一张牌是比当�
 - `GAME_NOT_FOUND`: 游戏不存在
 - `NO_ACTIVE_GAME`: 没有活跃的游戏
 
-## 8. 事件推送
+## 8. Chicken Road 游戏接口
+
+### 8.1 CHICKENROAD_START_GAME - 开始游戏
+
+Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一步倍率增加，可随时提现。
+
+**请求消息**：
+```json
+{
+  "i": "msg_801",
+  "t": "CHICKENROAD_START_GAME",
+  "p": {
+    "amount": "10.00",
+    "difficulty": "easy",  // 可选值: "easy", "medium", "hard", "daredevil"
+    "clientSeed": "my_lucky_seed_123"
+  }
+}
+```
+
+**响应消息**：
+```json
+{
+  "i": "msg_801",
+  "t": "CHICKENROAD_START_GAME_RESPONSE",
+  "p": {
+    "roundId": "1234567890",
+    "status": "playing",
+    "betAmount": "10.00000000",
+    "currentStep": 0,
+    "maxSteps": 24,
+    "difficulty": "easy",
+    "currentMultiplier": "1.0000",
+    "nextMultiplier": "1.0300",
+    "nextProbability": 0.985,
+    "completedSteps": []
+  }
+}
+```
+
+### 8.2 CHICKENROAD_MOVE_FORWARD - 前进一步
+
+玩家控制小鸡前进一步，如果生存则倍率增加，如果失败则游戏结束。
+
+**请求消息**：
+```json
+{
+  "i": "msg_802",
+  "t": "CHICKENROAD_MOVE_FORWARD",
+  "p": {
+    "roundId": "1234567890"
+  }
+}
+```
+
+**响应消息**（生存）：
+```json
+{
+  "i": "msg_802",
+  "t": "CHICKENROAD_MOVE_FORWARD_RESPONSE",
+  "p": {
+    "roundId": "1234567890",
+    "survived": true,
+    "status": "playing",
+    "currentStep": 1,
+    "maxSteps": 24,
+    "currentMultiplier": "1.0300",
+    "nextMultiplier": "1.0700",
+    "nextProbability": 0.963,
+    "completedSteps": [0],
+    "finalPayout": "0.00000000",
+    "isProfitable": false
+  }
+}
+```
+
+**响应消息**（失败）：
+```json
+{
+  "i": "msg_802",
+  "t": "CHICKENROAD_MOVE_FORWARD_RESPONSE",
+  "p": {
+    "roundId": "1234567890",
+    "survived": false,
+    "status": "finished",
+    "currentStep": 1,
+    "maxSteps": 24,
+    "currentMultiplier": "0.0000",
+    "completedSteps": [0],
+    "finalPayout": "0.00000000",
+    "isProfitable": false
+  }
+}
+```
+
+### 8.3 CHICKENROAD_CASH_OUT - 提现
+
+玩家可以在至少完成一步后提现当前赢利。
+
+**请求消息**：
+```json
+{
+  "i": "msg_803",
+  "t": "CHICKENROAD_CASH_OUT",
+  "p": {
+    "roundId": "1234567890"
+  }
+}
+```
+
+**响应消息**：
+```json
+{
+  "i": "msg_803",
+  "t": "CHICKENROAD_CASH_OUT_RESPONSE",
+  "p": {
+    "roundId": "1234567890",
+    "status": "cashed_out",
+    "payout": "15.30000000",
+    "cashedOut": true,
+    "finalPayout": "15.30000000",
+    "isProfitable": true,
+    "currentMultiplier": "1.5300",
+    "completedSteps": [0, 1, 2, 3, 4, 5, 6, 7, 8]
+  }
+}
+```
+
+### 8.4 CHICKENROAD_GET_STATE - 获取游戏状态
+
+获取指定回合的游戏状态。
+
+**请求消息**：
+```json
+{
+  "i": "msg_804",
+  "t": "CHICKENROAD_GET_STATE",
+  "p": {
+    "roundId": "1234567890"
+  }
+}
+```
+
+**响应消息**：
+```json
+{
+  "i": "msg_804",
+  "t": "CHICKENROAD_GET_STATE_RESPONSE",
+  "p": {
+    "roundId": "1234567890",
+    "status": "playing",
+    "betAmount": "10.00000000",
+    "currentStep": 5,
+    "maxSteps": 24,
+    "difficulty": "easy",
+    "currentMultiplier": "1.2900",
+    "nextMultiplier": "1.3600",
+    "nextProbability": 0.949,
+    "completedSteps": [0, 1, 2, 3, 4],
+    "survived": true,
+    "cashedOut": false
+  }
+}
+```
+
+### 8.5 CHICKENROAD_CHECK_ACTIVE - 检查活跃游戏
+
+检查玩家是否有未完成的游戏。
+
+**请求消息**：
+```json
+{
+  "i": "msg_805",
+  "t": "CHICKENROAD_CHECK_ACTIVE",
+  "p": {}
+}
+```
+
+**响应消息**（有活跃游戏）：
+```json
+{
+  "i": "msg_805",
+  "t": "CHICKENROAD_CHECK_ACTIVE_RESPONSE",
+  "p": {
+    "hasActiveGame": true,
+    "roundId": "1234567890",
+    "gameState": {
+      "status": "playing",
+      "currentStep": 5,
+      "maxSteps": 24,
+      "difficulty": "easy",
+      "currentMultiplier": "1.2900",
+      "completedSteps": [0, 1, 2, 3, 4],
+      "survived": true
+    }
+  }
+}
+```
+
+**响应消息**（无活跃游戏）：
+```json
+{
+  "i": "msg_805",
+  "t": "CHICKENROAD_CHECK_ACTIVE_RESPONSE",
+  "p": {
+    "hasActiveGame": false
+  }
+}
+```
+
+### 8.6 CHICKENROAD_RESUME_GAME - 恢复游戏
+
+恢复未完成的游戏。
+
+**请求消息**：
+```json
+{
+  "i": "msg_806",
+  "t": "CHICKENROAD_RESUME_GAME",
+  "p": {
+    "roundId": "1234567890"  // 可选，如果不提供则恢复最新的活跃游戏
+  }
+}
+```
+
+**响应消息**：
+```json
+{
+  "i": "msg_806",
+  "t": "CHICKENROAD_RESUME_GAME_RESPONSE",
+  "p": {
+    "roundId": "1234567890",
+    "resumed": true,
+    "status": "playing",
+    "currentStep": 5,
+    "maxSteps": 24,
+    "difficulty": "easy",
+    "currentMultiplier": "1.2900",
+    "nextMultiplier": "1.3600",
+    "nextProbability": 0.949,
+    "completedSteps": [0, 1, 2, 3, 4],
+    "survived": true,
+    "cashedOut": false
+  }
+}
+```
+
+**游戏规则**：
+1. **难度等级**：
+   - Easy：24步，最高倍率19.44x，RTP 98.5%
+   - Medium：22步，最高倍率1788.80x，RTP 97.5%
+   - Hard：20步，最高倍率41321.43x，RTP 96.5%
+   - Daredevil：15步，最高倍率2542251.93x，RTP 96.0%
+2. **游戏流程**：选择难度 → 下注 → 逐步前进或提现 → 游戏结束
+3. **提现条件**：至少完成一步后才能提现
+4. **概率计算**：每步成功概率基于RTP和倍率序列动态计算
+5. **自动结束**：达到最大步数时自动提现
+
+**错误码**：
+- `ACTIVE_SESSION_EXISTS`: 已有进行中的游戏
+- `INVALID_AMOUNT`: 无效的下注金额
+- `INVALID_DIFFICULTY`: 无效的难度参数
+- `MOVE_FAILED`: 前进失败（游戏未开始或已结束）
+- `CASHOUT_FAILED`: 提现失败（未满足条件）
+- `GAME_NOT_FOUND`: 游戏不存在
+- `NO_ACTIVE_GAME`: 没有活跃的游戏
+
+## 9. 事件推送
 
 服务端会主动推送以下事件到客户端。
 
-### 8.1 INITIALIZATION_COMPLETE - 初始化完成
+### 9.1 INITIALIZATION_COMPLETE - 初始化完成
 
 连接建立并认证成功后，服务端推送初始化完成事件。
 
@@ -1305,12 +1531,18 @@ HiLo是一个经典的高低牌游戏。玩家需要预测下一张牌是比当�
 
 ### 10.5 游戏ID格式
 - 游戏ID格式为："inhousegame:游戏类型"
-- 示例："inhousegame:dice"、"inhousegame:mines"、"inhousegame:keno"、"inhousegame:plinko"、"inhousegame:hilo"
+- 示例："inhousegame:dice"、"inhousegame:mines"、"inhousegame:keno"、"inhousegame:plinko"、"inhousegame:hilo"、"inhousegame:chickenroad"
 
 ### 10.6 客户端种子
 - 必须提供8-256个字符的客户端种子
 - 用于可证明公平机制
 - 每次游戏建议使用不同的种子
+
+### 10.7 试玩模式
+- 所有游戏支持试玩模式
+- 将 `amount` 设为空字符串 `""` 或 `"0"` 即可激活
+- 试玩模式下不扣除余额，但游戏逻辑完全相同
+- 适合新用户了解游戏规则和体验游戏
 
 ## 11. 实现状态
 
@@ -1323,7 +1555,44 @@ HiLo是一个经典的高低牌游戏。玩家需要预测下一张牌是比当�
 | Keno游戏 | ✅ 已实现 | 即时开奖，无需会话管理 |
 | Plinko游戏 | ✅ 已实现 | 即时开奖，支持8-16行和3种难度 |
 | HiLo游戏 | ✅ 已实现 | 完整游戏流程已实现 |
+| Chicken Road游戏 | ✅ 已实现 | 完整游戏流程已实现，支持4种难度 |
 | 投注活动历史 | ✅ 已实现 | GET_BET_ACTIVITIES接口 |
 | 事件推送 | ✅ 已实现 | 支持余额更新和投注广播 |
 | 可证明公平 | ✅ 已实现 | 完整的provably fair机制 |
+| 试玩模式 | ✅ 已实现 | 支持amount为空或0的试玩下注 |
 | Blackjack游戏 | 🚧 开发中 | 基础功能已实现 |
+
+## 12. 版本历史
+
+### v1.1.0
+
+#### 重要变更
+1. **字段命名统一化**
+   - 所有响应中的 `betId` 字段统一改为 `roundId`
+   - Mines游戏接口中的 `gameId` 改为 `roundId`
+   - 统一使用 `roundId` 作为游戏回合的唯一标识符
+
+2. **试玩模式支持**
+   - 所有游戏的 PLACE_BET 请求支持试玩模式
+   - `amount` 字段为空字符串 `""` 或 `"0"` 时进入试玩模式
+   - 试玩模式不扣除余额，用于游戏体验
+
+3. **GET_BALANCE 接口简化**
+   - 不再需要 `currency` 字段
+   - 系统自动使用会话创建时的币种
+
+4. **新增游戏**
+   - 添加 Chicken Road 游戏支持
+   - 支持 easy/medium/hard/daredevil 四种难度
+   - 最高倍率可达 2542251.93x
+
+5. **Mines 游戏优化**
+   - 移除 MINES_ABANDON_GAME 功能
+   - 简化会话管理逻辑
+   - 提升游戏响应速度
+
+### v1.0.0
+- 初始版本发布
+- 支持 Dice、Mines、Keno、Plinko、HiLo 五款游戏
+- 实现完整的 WebSocket 通信协议
+- 支持可证明公平机制

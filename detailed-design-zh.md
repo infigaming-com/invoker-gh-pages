@@ -1218,7 +1218,6 @@ type MinesService struct {
 // - RevealTile: 揭示格子
 // - CashOut: 主动提现
 // - ResumeGame: 恢复游戏
-// - AbandonGame: 放弃游戏
 // - GetActiveGameForPlayer: 获取活跃游戏
 // - CleanupInactiveGames: 清理非活跃游戏（5分钟自动提现）
 ```
