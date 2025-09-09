@@ -755,20 +755,20 @@ sequenceDiagram
     participant EventBus as 事件总线
     participant Aggregator as 聚合器(io)
 
-    Player->>Client: 选择数字
-    Note over Client: 从1-80中选择5个数字<br/>[1, 15, 33, 45, 67]
+    Player->>Client: 选择数字和难度
+    Note over Client: 从1-40中选择5个数字<br/>[3, 7, 15, 22, 28]<br/>难度: classic
     
     Client->>Client: 生成客户端种子
     Note over Client: "keno-seed-123456"
     
     Client->>WSGateway: PLACE_BET_REQUEST
-    Note over Client: game_type: "keno"<br/>amount: 100<br/>selectedNumbers: [1,15,33,45,67]
+    Note over Client: game_type: "keno"<br/>amount: 100<br/>selectedNumbers: [3,7,15,22,28]<br/>difficulty: "classic"
     
     WSGateway->>KenoAdapter: 路由到Keno适配器
     KenoAdapter->>KenoService: PlaceKenoBet
     
     KenoService->>KenoService: 验证参数
-    Note over KenoService: 检查数字范围(1-80)<br/>检查数量(1-10个)<br/>检查重复
+    Note over KenoService: 检查数字范围(1-40)<br/>检查数量(1-10个)<br/>检查重复<br/>验证难度模式
 
     KenoService->>Aggregator: 检查余额
     Aggregator->>KenoService: 余额充足
@@ -781,20 +781,20 @@ sequenceDiagram
     Database->>KenoEngine: 返回种子+nonce
     
     KenoEngine->>KenoEngine: Fisher-Yates洗牌算法
-    Note over KenoEngine: 使用SHA256哈希<br/>生成20个随机数字<br/>[1,3,5,7,15,20,25,30,33,40,45,50,55,60,65,67,70,75,77,80]
+    Note over KenoEngine: 使用SHA256哈希<br/>生成10个随机数字<br/>[3,7,9,12,15,18,22,25,31,35]
     
     KenoEngine->>KenoEngine: 计算匹配
-    Note over KenoEngine: 匹配数字: [1,15,33,45,67]<br/>匹配数量: 5/5<br/>赔率: 480×
+    Note over KenoEngine: 匹配数字: [3,7,15,22]<br/>匹配数量: 4/5<br/>难度: classic<br/>赔率: 10×
     
     KenoEngine->>KenoService: 游戏结果
     
     alt 有中奖
         KenoService->>Aggregator: 发送奖金
-        Note over Aggregator: 支付 $48000
+        Note over Aggregator: 支付 $1000
     end
     
     KenoService->>Database: 保存游戏结果
-    Note over Database: 保存选择数字、开奖数字<br/>匹配结果、赔率等
+    Note over Database: 保存选择数字、开奖数字<br/>匹配结果、赔率、难度等
     
     KenoService->>Database: 更新nonce
     
@@ -805,7 +805,7 @@ sequenceDiagram
     WSGateway->>Client: 显示结果
     
     Client->>Player: 展示开奖动画
-    Note over Player: 显示20个开奖数字<br/>高亮匹配的数字<br/>显示赔率和奖金
+    Note over Player: 显示10个开奖数字<br/>高亮匹配的数字<br/>显示难度、赔率和奖金
     
     EventBus->>WSGateway: 广播游戏事件
     WSGateway->>Client: GAME_EVENT推送
@@ -831,7 +831,7 @@ sequenceDiagram
     KenoAdapter->>KenoService: QuickPick(5)
     
     KenoService->>KenoService: 生成随机数字
-    Note over KenoService: 使用crypto/rand<br/>生成5个不重复数字<br/>[12, 28, 45, 61, 77]
+    Note over KenoService: 使用crypto/rand<br/>生成5个不重复数字<br/>[5, 12, 18, 25, 37]
     
     KenoService->>KenoAdapter: 返回数字
     KenoAdapter->>WSGateway: KENO_QUICK_PICK_RESPONSE
@@ -846,13 +846,14 @@ sequenceDiagram
 | 特性 | 说明 |
 |------|------|
 | 游戏类型 | 即时游戏，无需会话管理 |
-| 数字范围 | 1-80 |
+| 数字范围 | 1-40 |
 | 选择数量 | 1-10个数字 |
-| 开奖数量 | 20个数字 |
+| 开奖数量 | 10个数字 |
+| 难度模式 | low, classic, medium, high |
 | 随机算法 | Fisher-Yates洗牌 |
 | 可证明公平 | SHA256 + 客户端种子 |
-| 赔率计算 | 基于选择数量和匹配数量 |
-| 最高赔率 | 50000× (选10中10) |
+| 赔率计算 | 基于选择数量、匹配数量和难度 |
+| 最高赔率 | 10000× (选10中10，Classic难度) |
 
 ## 事件订阅流程
 
