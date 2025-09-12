@@ -150,6 +150,100 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 }
 ```
 
+**响应消息**（Keno游戏示例）：
+```json
+{
+  "i": "msg_002",
+  "t": "GET_GAME_CONFIG_RESPONSE",
+  "p": {
+    "configs": [
+      {
+        "gameId": "inhousegame:keno",
+        "config": {
+          "id": 2000005,
+          "gameName": "Keno",
+          "gameId": "inhousegame:keno",
+          "category": "instant",
+          "status": "active",
+          "description": "Classic lottery-style game",
+          "defaultRTP": "97%",
+          "features": ["provably_fair", "instant_play", "number_selection"],
+          "betInfo": [
+            {
+              "currency": "USD",
+              "currencyType": "fiat",
+              "defaultBet": 1,
+              "minBet": 0.1,
+              "maxBet": 1000,
+              "maxProfit": 100000
+            }
+          ],
+          "gameParameters": {
+            "minNumber": 1,
+            "maxNumber": 40,
+            "minSpots": 1,
+            "maxSpots": 10,
+            "drawnNumbers": 10,
+            "availableSpots": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "payoutTable": [
+              {
+                "spots": 1,
+                "entries": [
+                  {"hits": 1, "payout": 3}
+                ]
+              },
+              {
+                "spots": 2,
+                "entries": [
+                  {"hits": 2, "payout": 12}
+                ]
+              },
+              {
+                "spots": 3,
+                "entries": [
+                  {"hits": 2, "payout": 1},
+                  {"hits": 3, "payout": 42}
+                ]
+              },
+              {
+                "spots": 4,
+                "entries": [
+                  {"hits": 2, "payout": 1},
+                  {"hits": 3, "payout": 5},
+                  {"hits": 4, "payout": 120}
+                ]
+              },
+              {
+                "spots": 5,
+                "entries": [
+                  {"hits": 3, "payout": 2},
+                  {"hits": 4, "payout": 20},
+                  {"hits": 5, "payout": 480}
+                ]
+              }
+              // ... 更多选择数量的赔率配置
+            ]
+          },
+          "rtpConfig": {
+            "rtpBySpots": {}
+          },
+          "commissionRate": "1%",
+          "maxRewardMultiplier": 50000
+        }
+      }
+    ]
+  }
+}
+```
+
+**注意**：`payoutTable` 字段现已改为结构化数组格式：
+- `spots`: 表示玩家选择的数字数量
+- `entries`: 该选择数量下的所有赔率条目
+  - `hits`: 命中数量
+  - `payout`: 对应的赔率倍数
+
+旧版本中 `payoutTable` 是 JSON 字符串格式：`"{\"1\":{\"1\":3},\"2\":{\"2\":12},...}"`，新版本改为了更易解析的结构化数组。
+
 ### 2.3 GET_BALANCE - 获取余额
 
 获取当前玩家余额。系统自动使用会话创建时的币种，无需在请求中指定。
