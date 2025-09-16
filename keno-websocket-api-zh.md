@@ -188,24 +188,6 @@ GET_GAME_CONFIG 响应中包含完整的游戏配置，其中 `payoutTables` 字
 
 每个难度包含完整的 spots 1-10 的赔率配置，前端应根据玩家选择的难度，从对应的难度配置中获取赔率显示。
 
-### 使用示例
-
-```javascript
-// 获取特定难度的赔率
-const difficulty = 'classic';
-const payoutTable = response.p.configs[0].config.gameParameters.payoutTables
-  .find(t => t.difficulty === difficulty);
-
-// 获取特定选择数量的赔率
-const spots = 5;
-const spotsPayouts = payoutTable.payouts.find(p => p.spots === spots);
-
-// 显示赔率
-spotsPayouts.entries.forEach(entry => {
-  console.log(`命中${entry.hits}个: ${entry.payout}倍`);
-});
-```
-
 ## 7. 相关文档
 
 - [WebSocket 通用接口](./common-websocket-api-zh.md)
