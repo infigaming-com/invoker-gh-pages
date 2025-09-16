@@ -185,43 +185,52 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
             "maxSpots": 10,
             "drawnNumbers": 10,
             "availableSpots": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-            "payoutTable": [
+            "payoutTables": [
               {
-                "spots": 1,
-                "entries": [
-                  {"hits": 1, "payout": 3}
+                "difficulty": "low",
+                "payouts": [
+                  {
+                    "spots": 1,
+                    "entries": [
+                      {"hits": 0, "payout": 0.7},
+                      {"hits": 1, "payout": 1.85}
+                    ]
+                  },
+                  {
+                    "spots": 2,
+                    "entries": [
+                      {"hits": 0, "payout": 0},
+                      {"hits": 2, "payout": 3.8}
+                    ]
+                  }
+                  // ... spots 3-10 的赔率配置
                 ]
               },
               {
-                "spots": 2,
-                "entries": [
-                  {"hits": 2, "payout": 12}
+                "difficulty": "classic",
+                "payouts": [
+                  {
+                    "spots": 1,
+                    "entries": [
+                      {"hits": 0, "payout": 0},
+                      {"hits": 1, "payout": 3.96}
+                    ]
+                  }
+                  // ... spots 2-10 的赔率配置
                 ]
               },
               {
-                "spots": 3,
-                "entries": [
-                  {"hits": 2, "payout": 1},
-                  {"hits": 3, "payout": 42}
+                "difficulty": "medium",
+                "payouts": [
+                  // ... 完整的 spots 1-10 赔率配置
                 ]
               },
               {
-                "spots": 4,
-                "entries": [
-                  {"hits": 2, "payout": 1},
-                  {"hits": 3, "payout": 5},
-                  {"hits": 4, "payout": 120}
-                ]
-              },
-              {
-                "spots": 5,
-                "entries": [
-                  {"hits": 3, "payout": 2},
-                  {"hits": 4, "payout": 20},
-                  {"hits": 5, "payout": 480}
+                "difficulty": "high",
+                "payouts": [
+                  // ... 完整的 spots 1-10 赔率配置
                 ]
               }
-              // ... 更多选择数量的赔率配置
             ]
           },
           "rtpConfig": {
@@ -236,13 +245,16 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 }
 ```
 
-**注意**：`payoutTable` 字段现已改为结构化数组格式：
-- `spots`: 表示玩家选择的数字数量
-- `entries`: 该选择数量下的所有赔率条目
-  - `hits`: 命中数量
-  - `payout`: 对应的赔率倍数
-
-旧版本中 `payoutTable` 是 JSON 字符串格式：`"{\"1\":{\"1\":3},\"2\":{\"2\":12},...}"`，新版本改为了更易解析的结构化数组。
+**注意**：`payoutTables` 字段为嵌套数组格式：
+- 包含 low、classic、medium、high 四个难度的完整赔率表
+- 每个难度对象包含：
+  - `difficulty`: 难度标识
+  - `payouts`: 该难度下所有选择数量（1-10）的赔率配置
+- 每个 payout 包含：
+  - `spots`: 玩家选择的数字数量
+  - `entries`: 该选择数量下的所有赔率条目
+    - `hits`: 命中数量
+    - `payout`: 对应的赔率倍数
 
 ### 2.3 GET_BALANCE - 获取余额
 

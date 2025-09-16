@@ -161,7 +161,52 @@ Keno 是一款经典的数字彩票游戏，玩家从 1-40 中选择 1-10 个数
 6. **快速选号**：快速选号功能由客户端实现，服务端只验证合法性
 7. **RoundID格式**：使用纯数字格式，由 Sony Flake ID 生成器生成
 
-## 6. 相关文档
+## 6. 游戏配置获取
+
+### GET_GAME_CONFIG 请求
+
+获取 Keno 游戏的完整配置，包括所有难度的赔率表。
+
+```json
+{
+  "i": "msg_config_001",
+  "t": "GET_GAME_CONFIG",
+  "p": {
+    "gameId": "inhousegame:keno"
+  }
+}
+```
+
+### 配置响应说明
+
+GET_GAME_CONFIG 响应中包含完整的游戏配置，其中 `payoutTables` 字段包含所有4个难度的赔率表：
+
+- **low**: 低风险模式赔率
+- **classic**: 经典模式赔率（默认）
+- **medium**: 中等风险模式赔率
+- **high**: 高风险模式赔率
+
+每个难度包含完整的 spots 1-10 的赔率配置，前端应根据玩家选择的难度，从对应的难度配置中获取赔率显示。
+
+### 使用示例
+
+```javascript
+// 获取特定难度的赔率
+const difficulty = 'classic';
+const payoutTable = response.p.configs[0].config.gameParameters.payoutTables
+  .find(t => t.difficulty === difficulty);
+
+// 获取特定选择数量的赔率
+const spots = 5;
+const spotsPayouts = payoutTable.payouts.find(p => p.spots === spots);
+
+// 显示赔率
+spotsPayouts.entries.forEach(entry => {
+  console.log(`命中${entry.hits}个: ${entry.payout}倍`);
+});
+```
+
+## 7. 相关文档
 
 - [WebSocket 通用接口](./common-websocket-api-zh.md)
 - [Keno 游戏详细设计](./keno-detailed-design-zh.md)
