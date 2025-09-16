@@ -177,16 +177,152 @@ Keno 是一款经典的数字彩票游戏，玩家从 1-40 中选择 1-10 个数
 }
 ```
 
+### GET_GAME_CONFIG 响应
+
+```json
+{
+  "i": "msg_config_001",
+  "t": "GET_GAME_CONFIG_RESPONSE",
+  "p": {
+    "configs": [
+      {
+        "gameId": "inhousegame:keno",
+        "config": {
+          "id": 2000005,
+          "gameName": "Keno",
+          "gameId": "inhousegame:keno",
+          "category": "instant",
+          "status": "active",
+          "description": "Classic lottery-style game with 80 numbers",
+          "minBet": 0.1,
+          "maxBet": 1000,
+          "defaultRTP": "97%",
+          "features": ["provably_fair", "instant_play", "quick_pick", "multi_spot"],
+          "betInfo": [
+            {
+              "currency": "USD",
+              "currencyType": "fiat",
+              "defaultBet": 1,
+              "minBet": 0.1,
+              "maxBet": 1000,
+              "maxProfit": 100000
+            }
+          ],
+          "gameParameters": {
+            "numberRange": {
+              "min": 1,
+              "max": 40
+            },
+            "spotRange": {
+              "min": 1,
+              "max": 10
+            },
+            "drawnNumbers": 10,
+            "payoutTables": [
+              {
+                "difficulty": "low",
+                "payouts": [
+                  {"spots": 1, "entries": [{"hits": 0, "payout": 0.7}, {"hits": 1, "payout": 1.85}]},
+                  {"spots": 2, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 3.8}]},
+                  {"spots": 3, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 1.1}, {"hits": 2, "payout": 1.38}, {"hits": 3, "payout": 26}]},
+                  {"spots": 4, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 2.2}, {"hits": 3, "payout": 7.9}, {"hits": 4, "payout": 90}]},
+                  {"spots": 5, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.5}, {"hits": 3, "payout": 4.2}, {"hits": 4, "payout": 13}, {"hits": 5, "payout": 300}]},
+                  {"spots": 6, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.1}, {"hits": 3, "payout": 2}, {"hits": 4, "payout": 6.2}, {"hits": 5, "payout": 100}, {"hits": 6, "payout": 700}]},
+                  {"spots": 7, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.1}, {"hits": 3, "payout": 1.6}, {"hits": 4, "payout": 3.5}, {"hits": 5, "payout": 15}, {"hits": 6, "payout": 225}, {"hits": 7, "payout": 700}]},
+                  {"spots": 8, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.1}, {"hits": 3, "payout": 1.5}, {"hits": 4, "payout": 2}, {"hits": 5, "payout": 5.5}, {"hits": 6, "payout": 39}, {"hits": 7, "payout": 100}, {"hits": 8, "payout": 800}]},
+                  {"spots": 9, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.1}, {"hits": 3, "payout": 1.3}, {"hits": 4, "payout": 1.7}, {"hits": 5, "payout": 2.5}, {"hits": 6, "payout": 7.5}, {"hits": 7, "payout": 50}, {"hits": 8, "payout": 250}, {"hits": 9, "payout": 1000}]},
+                  {"spots": 10, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.1}, {"hits": 3, "payout": 1.2}, {"hits": 4, "payout": 1.3}, {"hits": 5, "payout": 1.8}, {"hits": 6, "payout": 3.5}, {"hits": 7, "payout": 13}, {"hits": 8, "payout": 50}, {"hits": 9, "payout": 250}, {"hits": 10, "payout": 1000}]}
+                ]
+              },
+              {
+                "difficulty": "classic",
+                "payouts": [
+                  {"spots": 1, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 3.96}]},
+                  {"spots": 2, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 1.9}, {"hits": 2, "payout": 4.5}]},
+                  {"spots": 3, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 1}, {"hits": 2, "payout": 3.1}, {"hits": 3, "payout": 10.4}]},
+                  {"spots": 4, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 0.8}, {"hits": 2, "payout": 1.8}, {"hits": 3, "payout": 5}, {"hits": 4, "payout": 22.5}]},
+                  {"spots": 5, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 0.25}, {"hits": 2, "payout": 1.4}, {"hits": 3, "payout": 4.1}, {"hits": 4, "payout": 16.5}, {"hits": 5, "payout": 36}]},
+                  {"spots": 6, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1}, {"hits": 3, "payout": 3.68}, {"hits": 4, "payout": 7}, {"hits": 5, "payout": 16.5}, {"hits": 6, "payout": 40}]},
+                  {"spots": 7, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 0.47}, {"hits": 3, "payout": 3}, {"hits": 4, "payout": 4.5}, {"hits": 5, "payout": 14}, {"hits": 6, "payout": 31}, {"hits": 7, "payout": 60}]},
+                  {"spots": 8, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 2.2}, {"hits": 4, "payout": 4}, {"hits": 5, "payout": 13}, {"hits": 6, "payout": 22}, {"hits": 7, "payout": 55}, {"hits": 8, "payout": 70}]},
+                  {"spots": 9, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 1.55}, {"hits": 4, "payout": 3}, {"hits": 5, "payout": 8}, {"hits": 6, "payout": 15}, {"hits": 7, "payout": 44}, {"hits": 8, "payout": 60}, {"hits": 9, "payout": 85}]},
+                  {"spots": 10, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 1.4}, {"hits": 4, "payout": 2.25}, {"hits": 5, "payout": 4.5}, {"hits": 6, "payout": 8}, {"hits": 7, "payout": 17}, {"hits": 8, "payout": 50}, {"hits": 9, "payout": 80}, {"hits": 10, "payout": 100}]}
+                ]
+              },
+              {
+                "difficulty": "medium",
+                "payouts": [
+                  {"spots": 1, "entries": [{"hits": 0, "payout": 0.4}, {"hits": 1, "payout": 2.75}]},
+                  {"spots": 2, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 1.8}, {"hits": 2, "payout": 5.1}]},
+                  {"spots": 3, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 2.8}, {"hits": 3, "payout": 50}]},
+                  {"spots": 4, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.7}, {"hits": 3, "payout": 10}, {"hits": 4, "payout": 100}]},
+                  {"spots": 5, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.4}, {"hits": 3, "payout": 4}, {"hits": 4, "payout": 14}, {"hits": 5, "payout": 390}]},
+                  {"spots": 6, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 3}, {"hits": 4, "payout": 9}, {"hits": 5, "payout": 180}, {"hits": 6, "payout": 710}]},
+                  {"spots": 7, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 2}, {"hits": 4, "payout": 7}, {"hits": 5, "payout": 30}, {"hits": 6, "payout": 400}, {"hits": 7, "payout": 800}]},
+                  {"spots": 8, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 2}, {"hits": 4, "payout": 4}, {"hits": 5, "payout": 11}, {"hits": 6, "payout": 67}, {"hits": 7, "payout": 400}, {"hits": 8, "payout": 900}]},
+                  {"spots": 9, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 2}, {"hits": 4, "payout": 2.5}, {"hits": 5, "payout": 5}, {"hits": 6, "payout": 15}, {"hits": 7, "payout": 100}, {"hits": 8, "payout": 500}, {"hits": 9, "payout": 1000}]},
+                  {"spots": 10, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 1.6}, {"hits": 4, "payout": 2}, {"hits": 5, "payout": 4}, {"hits": 6, "payout": 7}, {"hits": 7, "payout": 26}, {"hits": 8, "payout": 100}, {"hits": 9, "payout": 500}, {"hits": 10, "payout": 1000}]}
+                ]
+              },
+              {
+                "difficulty": "high",
+                "payouts": [
+                  {"spots": 1, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 3.96}]},
+                  {"spots": 2, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 17.1}]},
+                  {"spots": 3, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 81.5}]},
+                  {"spots": 4, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 10}, {"hits": 4, "payout": 259}]},
+                  {"spots": 5, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 4.5}, {"hits": 4, "payout": 48}, {"hits": 5, "payout": 450}]},
+                  {"spots": 6, "entries": [{"hits": 0, "payout": 0}, {"hits": 4, "payout": 11}, {"hits": 5, "payout": 350}, {"hits": 6, "payout": 710}]},
+                  {"spots": 7, "entries": [{"hits": 0, "payout": 0}, {"hits": 4, "payout": 7}, {"hits": 5, "payout": 90}, {"hits": 6, "payout": 400}, {"hits": 7, "payout": 800}]},
+                  {"spots": 8, "entries": [{"hits": 0, "payout": 0}, {"hits": 4, "payout": 5}, {"hits": 5, "payout": 20}, {"hits": 6, "payout": 270}, {"hits": 7, "payout": 600}, {"hits": 8, "payout": 900}]},
+                  {"spots": 9, "entries": [{"hits": 0, "payout": 0}, {"hits": 4, "payout": 4}, {"hits": 5, "payout": 11}, {"hits": 6, "payout": 56}, {"hits": 7, "payout": 500}, {"hits": 8, "payout": 800}, {"hits": 9, "payout": 1000}]},
+                  {"spots": 10, "entries": [{"hits": 0, "payout": 0}, {"hits": 4, "payout": 3.5}, {"hits": 5, "payout": 8}, {"hits": 6, "payout": 13}, {"hits": 7, "payout": 63}, {"hits": 8, "payout": 500}, {"hits": 9, "payout": 800}, {"hits": 10, "payout": 1000}]}
+                ]
+              }
+            ]
+          },
+          "rtpConfig": {
+            "displayRTP": [97, 96, 95, 94],
+            "actualRTP": [97, 96, 95, 94, 93, 92, 90]
+          },
+          "commissionRate": "1%",
+          "maxRewardMultiplier": 50000
+        }
+      }
+    ]
+  }
+}
+```
+
 ### 配置响应说明
 
-GET_GAME_CONFIG 响应中包含完整的游戏配置，其中 `payoutTables` 字段包含所有4个难度的赔率表：
+GET_GAME_CONFIG 响应中包含完整的游戏配置，关键字段说明：
 
-- **low**: 低风险模式赔率
-- **classic**: 经典模式赔率（默认）
-- **medium**: 中等风险模式赔率
-- **high**: 高风险模式赔率
+#### payoutTables 结构
+`payoutTables` 字段包含所有4个难度的完整赔率表：
 
-每个难度包含完整的 spots 1-10 的赔率配置，前端应根据玩家选择的难度，从对应的难度配置中获取赔率显示。
+- **low**: 低风险模式赔率 - 小奖频繁，大奖稀少
+- **classic**: 经典模式赔率（默认）- 平衡设计
+- **medium**: 中等风险模式赔率 - 中等波动
+- **high**: 高风险模式赔率 - 大奖诱人，小奖稀少
+
+每个难度包含：
+- `difficulty`: 难度名称
+- `payouts`: 包含 spots 1-10 的赔率配置数组
+  - `spots`: 选择的数字数量
+  - `entries`: 该选择数量下的赔率列表
+    - `hits`: 命中数量
+    - `payout`: 对应的赔率倍数
+
+#### 其他重要字段
+- `numberRange`: 可选数字范围（1-40）
+- `spotRange`: 可选择的数字数量范围（1-10）
+- `drawnNumbers`: 每次开出的数字数量（10个）
+- `betInfo`: 各币种的投注限额
+- `rtpConfig`: RTP（返还率）配置
+- `maxRewardMultiplier`: 最大奖励倍数
+
+前端应根据玩家选择的难度，从对应的难度配置中获取赔率显示。
 
 ## 7. 相关文档
 
