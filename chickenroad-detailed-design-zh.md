@@ -210,18 +210,18 @@ type ChickenRoadGame struct {
 ### 3. WebSocket接口
 
 #### 游戏控制
-- **CHICKENROAD_START_GAME**：开始新游戏
+- **CHICKENROAD_START** 或 **PLACE_BET**：开始新游戏
   - 参数：`difficulty`、`betAmount`、`clientSeed`
-  
-- **CHICKENROAD_TAKE_STEP**：前进一步
+
+- **CHICKENROAD_MOVE**：前进一步
   - 返回：是否成功、当前倍数、位置
-  
-- **CHICKENROAD_CASH_OUT**：兑现
+
+- **CHICKENROAD_CASHOUT**：兑现
   - 返回：最终倍数、奖金
 
 #### 会话管理
 - **CHICKENROAD_CHECK_ACTIVE**：检查活跃游戏
-- **CHICKENROAD_RESUME_GAME**：恢复游戏
+- **CHICKENROAD_RESUME**：恢复游戏
 - **CHICKENROAD_GET_STATE**：获取当前状态
 
 ### 4. 会话管理机制

@@ -13,7 +13,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 - **断线重连**：支持游戏恢复功能
 - **可证明公平**：完整的 Provably Fair 机制
 
-## 1. CHICKENROAD_START_GAME - 开始游戏
+## 1. CHICKENROAD_START - 开始游戏
 
 开始新的 Chicken Road 游戏。每个玩家同时只能有一个活跃的游戏。
 
@@ -22,10 +22,31 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 ```json
 {
   "i": "msg_801",
-  "t": "CHICKENROAD_START_GAME",
+  "t": "CHICKENROAD_START",
   "p": {
     "amount": "10.00",  // 可选：空字符串""或"0"表示试玩模式
     "difficulty": "easy"  // 难度等级
+  }
+}
+```
+
+### 通过 PLACE_BET 开始游戏（推荐）
+
+也可以使用统一的 PLACE_BET 接口开始游戏：
+
+```json
+{
+  "i": "msg_801",
+  "t": "PLACE_BET",
+  "p": {
+    "@type": "type.googleapis.com/game.v1.PlaceBetRequest",
+    "gameId": "inhousegame:chickenroad",
+    "amount": "10.00",
+    "gameParams": {
+      "chickenRoad": {
+        "difficulty": "easy"
+      }
+    }
   }
 }
 ```
@@ -51,7 +72,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 ```json
 {
   "i": "msg_801",
-  "t": "CHICKENROAD_START_GAME_RESPONSE",
+  "t": "CHICKENROAD_START_RESPONSE",
   "p": {
     "roundId": "123456789012345678",
     "status": "playing",
@@ -67,6 +88,8 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 }
 ```
 
+注：如果已有活跃游戏，将返回错误码 `ACTIVE_SESSION_EXISTS`
+
 ### 响应字段说明
 
 | 字段 | 类型 | 说明 |
@@ -80,7 +103,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 | `nextProbability` | number | 下一步成功的概率 |
 | `completedSteps` | number[] | 已完成的步数列表 |
 
-## 2. CHICKENROAD_MOVE_FORWARD - 前进一步
+## 2. CHICKENROAD_MOVE - 前进一步
 
 控制小鸡前进一步，系统判定是否生存。
 
@@ -89,7 +112,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 ```json
 {
   "i": "msg_802",
-  "t": "CHICKENROAD_MOVE_FORWARD",
+  "t": "CHICKENROAD_MOVE",
   "p": {
     "roundId": "123456789012345678"
   }
@@ -101,7 +124,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 ```json
 {
   "i": "msg_802",
-  "t": "CHICKENROAD_MOVE_FORWARD_RESPONSE",
+  "t": "CHICKENROAD_MOVE_RESPONSE",
   "p": {
     "roundId": "123456789012345678",
     "survived": true,
@@ -123,7 +146,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 ```json
 {
   "i": "msg_802",
-  "t": "CHICKENROAD_MOVE_FORWARD_RESPONSE",
+  "t": "CHICKENROAD_MOVE_RESPONSE",
   "p": {
     "roundId": "123456789012345678",
     "survived": false,
@@ -138,7 +161,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 }
 ```
 
-## 3. CHICKENROAD_CASH_OUT - 提现
+## 3. CHICKENROAD_CASHOUT - 提现
 
 在至少完成一步后提现当前赢利。
 
@@ -147,7 +170,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 ```json
 {
   "i": "msg_803",
-  "t": "CHICKENROAD_CASH_OUT",
+  "t": "CHICKENROAD_CASHOUT",
   "p": {
     "roundId": "123456789012345678"
   }
@@ -159,7 +182,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 ```json
 {
   "i": "msg_803",
-  "t": "CHICKENROAD_CASH_OUT_RESPONSE",
+  "t": "CHICKENROAD_CASHOUT_RESPONSE",
   "p": {
     "roundId": "123456789012345678",
     "status": "cashed_out",
@@ -260,7 +283,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 }
 ```
 
-## 6. CHICKENROAD_RESUME_GAME - 恢复游戏
+## 6. CHICKENROAD_RESUME - 恢复游戏
 
 恢复未完成的游戏。
 
@@ -269,7 +292,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 ```json
 {
   "i": "msg_806",
-  "t": "CHICKENROAD_RESUME_GAME",
+  "t": "CHICKENROAD_RESUME",
   "p": {
     "roundId": "123456789012345678"  // 可选，不提供则恢复最新的活跃游戏
   }
@@ -281,7 +304,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 ```json
 {
   "i": "msg_806",
-  "t": "CHICKENROAD_RESUME_GAME_RESPONSE",
+  "t": "CHICKENROAD_RESUME_RESPONSE",
   "p": {
     "roundId": "123456789012345678",
     "resumed": true,
