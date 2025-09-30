@@ -7,32 +7,17 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 ## 游戏特性
 
 - **会话型游戏**：支持逐步前进，可随时提现
-- **四种难度**：easy、medium、hard、daredevil
-- **超高倍率**：最高可达 2,542,251.93 倍（daredevil难度）
+- **四种难度**：easy、medium、hard、expert
+- **动态倍率**：倍率通过公式动态计算，保证 98% RTP
 - **动态概率**：每一步的成功概率基于难度和进度
 - **断线重连**：支持游戏恢复功能
 - **可证明公平**：完整的 Provably Fair 机制
 
-## 1. CHICKENROAD_START - 开始游戏
+## 1. PLACE_BET - 开始游戏
 
-开始新的 Chicken Road 游戏。每个玩家同时只能有一个活跃的游戏。
+使用统一的 PLACE_BET 接口开始新的 Chicken Road 游戏。每个玩家同时只能有一个活跃的游戏。
 
 ### 请求消息
-
-```json
-{
-  "i": "msg_801",
-  "t": "CHICKENROAD_START",
-  "p": {
-    "amount": "10.00",  // 可选：空字符串""或"0"表示试玩模式
-    "difficulty": "easy"  // 难度等级
-  }
-}
-```
-
-### 通过 PLACE_BET 开始游戏（推荐）
-
-也可以使用统一的 PLACE_BET 接口开始游戏：
 
 ```json
 {
@@ -56,33 +41,38 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 | 参数 | 类型 | 必需 | 说明 |
 |------|------|------|------|
 | `amount` | string | 是 | 下注金额，空字符串或"0"为试玩模式 |
-| `difficulty` | string | 是 | 难度等级：easy、medium、hard、daredevil |
+| `difficulty` | string | 是 | 难度等级：easy、medium、hard、expert |
 
 ### 难度配置
 
-| 难度 | 步数 | 最高倍率 | RTP | 特点 |
-|------|------|----------|-----|------|
-| Easy | 24 | 19.44x | 98.5% | 稳定小赢，适合新手 |
-| Medium | 22 | 1,788.80x | 97.5% | 平衡风险与回报 |
-| Hard | 20 | 41,321.43x | 96.5% | 高风险高回报 |
-| Daredevil | 15 | 2,542,251.93x | 96.0% | 极限挑战，巨额奖金 |
+| 难度 | 步数 | RTP | 特点 |
+|------|------|-----|------|
+| Easy | 19 | 98% | 步数多，适合稳健玩家 |
+| Medium | 17 | 98% | 中等步数，平衡风险与回报 |
+| Hard | 15 | 98% | 较少步数，高风险高回报 |
+| Expert | 10 | 98% | 极限挑战，倍率增长极快 |
+
+**倍率计算说明**：
+- 倍率通过公式动态计算：`倍率 = (1 ÷ 获胜率) × 0.98`
+- 获胜率公式：`获胜率 = (总步数 - 当前步数 + 1) / (20 - 当前步数 + 1) × 上一个获胜率`
+- 所有难度统一 RTP 为 98%
 
 ### 响应消息
 
 ```json
 {
   "i": "msg_801",
-  "t": "CHICKENROAD_START_RESPONSE",
+  "t": "PLACE_BET_RESPONSE",
   "p": {
     "roundId": "123456789012345678",
     "status": "playing",
     "betAmount": "10.00000000",
     "currentStep": 0,
-    "maxSteps": 24,
+    "maxSteps": 19,
     "difficulty": "easy",
     "currentMultiplier": "1.0000",
     "nextMultiplier": "1.0300",
-    "nextProbability": 0.985,
+    "nextProbability": 0.95,
     "completedSteps": []
   }
 }
