@@ -222,61 +222,61 @@ Keno 是一款经典的数字彩票游戏，玩家从 1-40 中选择 1-10 个数
               {
                 "difficulty": "low",
                 "payouts": [
-                  {"spots": 1, "entries": [{"hits": 0, "payout": 0.7}, {"hits": 1, "payout": 1.85}]},
-                  {"spots": 2, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 3.8}]},
-                  {"spots": 3, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 1.1}, {"hits": 2, "payout": 1.38}, {"hits": 3, "payout": 26}]},
-                  {"spots": 4, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 2.2}, {"hits": 3, "payout": 7.9}, {"hits": 4, "payout": 90}]},
-                  {"spots": 5, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.5}, {"hits": 3, "payout": 4.2}, {"hits": 4, "payout": 13}, {"hits": 5, "payout": 300}]},
-                  {"spots": 6, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.1}, {"hits": 3, "payout": 2}, {"hits": 4, "payout": 6.2}, {"hits": 5, "payout": 100}, {"hits": 6, "payout": 700}]},
-                  {"spots": 7, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.1}, {"hits": 3, "payout": 1.6}, {"hits": 4, "payout": 3.5}, {"hits": 5, "payout": 15}, {"hits": 6, "payout": 225}, {"hits": 7, "payout": 700}]},
-                  {"spots": 8, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.1}, {"hits": 3, "payout": 1.5}, {"hits": 4, "payout": 2}, {"hits": 5, "payout": 5.5}, {"hits": 6, "payout": 39}, {"hits": 7, "payout": 100}, {"hits": 8, "payout": 800}]},
-                  {"spots": 9, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.1}, {"hits": 3, "payout": 1.3}, {"hits": 4, "payout": 1.7}, {"hits": 5, "payout": 2.5}, {"hits": 6, "payout": 7.5}, {"hits": 7, "payout": 50}, {"hits": 8, "payout": 250}, {"hits": 9, "payout": 1000}]},
-                  {"spots": 10, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.1}, {"hits": 3, "payout": 1.2}, {"hits": 4, "payout": 1.3}, {"hits": 5, "payout": 1.8}, {"hits": 6, "payout": 3.5}, {"hits": 7, "payout": 13}, {"hits": 8, "payout": 50}, {"hits": 9, "payout": 250}, {"hits": 10, "payout": 1000}]}
+                  {"spots": 1, "entries": [{"hits": 1, "payout": 1.85}]},
+                  {"spots": 2, "entries": [{"hits": 1, "payout": 2}, {"hits": 2, "payout": 3.8}]},
+                  {"spots": 3, "entries": [{"hits": 1, "payout": 1.1}, {"hits": 2, "payout": 1.38}, {"hits": 3, "payout": 26}]},
+                  {"spots": 4, "entries": [{"hits": 2, "payout": 2.2}, {"hits": 3, "payout": 7.9}, {"hits": 4, "payout": 90}]},
+                  {"spots": 5, "entries": [{"hits": 3, "payout": 1.5}, {"hits": 4, "payout": 4.2}, {"hits": 5, "payout": 13}, {"hits": 6, "payout": 300}]},
+                  {"spots": 6, "entries": [{"hits": 3, "payout": 1.1}, {"hits": 4, "payout": 2}, {"hits": 5, "payout": 6.2}, {"hits": 6, "payout": 100}, {"hits": 7, "payout": 700}]},
+                  {"spots": 7, "entries": [{"hits": 3, "payout": 1.1}, {"hits": 4, "payout": 1.6}, {"hits": 5, "payout": 3.5}, {"hits": 6, "payout": 15}, {"hits": 7, "payout": 225}, {"hits": 8, "payout": 700}]},
+                  {"spots": 8, "entries": [{"hits": 3, "payout": 1.1}, {"hits": 4, "payout": 1.5}, {"hits": 5, "payout": 2}, {"hits": 6, "payout": 5.5}, {"hits": 7, "payout": 39}, {"hits": 8, "payout": 100}, {"hits": 9, "payout": 800}]},
+                  {"spots": 9, "entries": [{"hits": 3, "payout": 1.1}, {"hits": 4, "payout": 1.3}, {"hits": 5, "payout": 1.7}, {"hits": 6, "payout": 2.5}, {"hits": 7, "payout": 7.5}, {"hits": 8, "payout": 50}, {"hits": 9, "payout": 250}, {"hits": 10, "payout": 1000}]},
+                  {"spots": 10, "entries": [{"hits": 3, "payout": 1.1}, {"hits": 4, "payout": 1.2}, {"hits": 5, "payout": 1.3}, {"hits": 6, "payout": 1.8}, {"hits": 7, "payout": 3.5}, {"hits": 8, "payout": 13}, {"hits": 9, "payout": 50}, {"hits": 10, "payout": 250}, {"hits": 11, "payout": 1000}]}
                 ]
               },
               {
                 "difficulty": "classic",
                 "payouts": [
-                  {"spots": 1, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 3.96}]},
-                  {"spots": 2, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 1.9}, {"hits": 2, "payout": 4.5}]},
-                  {"spots": 3, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 1}, {"hits": 2, "payout": 3.1}, {"hits": 3, "payout": 10.4}]},
-                  {"spots": 4, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 0.8}, {"hits": 2, "payout": 1.8}, {"hits": 3, "payout": 5}, {"hits": 4, "payout": 22.5}]},
-                  {"spots": 5, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 0.25}, {"hits": 2, "payout": 1.4}, {"hits": 3, "payout": 4.1}, {"hits": 4, "payout": 16.5}, {"hits": 5, "payout": 36}]},
-                  {"spots": 6, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1}, {"hits": 3, "payout": 3.68}, {"hits": 4, "payout": 7}, {"hits": 5, "payout": 16.5}, {"hits": 6, "payout": 40}]},
-                  {"spots": 7, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 0.47}, {"hits": 3, "payout": 3}, {"hits": 4, "payout": 4.5}, {"hits": 5, "payout": 14}, {"hits": 6, "payout": 31}, {"hits": 7, "payout": 60}]},
-                  {"spots": 8, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 2.2}, {"hits": 4, "payout": 4}, {"hits": 5, "payout": 13}, {"hits": 6, "payout": 22}, {"hits": 7, "payout": 55}, {"hits": 8, "payout": 70}]},
-                  {"spots": 9, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 1.55}, {"hits": 4, "payout": 3}, {"hits": 5, "payout": 8}, {"hits": 6, "payout": 15}, {"hits": 7, "payout": 44}, {"hits": 8, "payout": 60}, {"hits": 9, "payout": 85}]},
-                  {"spots": 10, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 1.4}, {"hits": 4, "payout": 2.25}, {"hits": 5, "payout": 4.5}, {"hits": 6, "payout": 8}, {"hits": 7, "payout": 17}, {"hits": 8, "payout": 50}, {"hits": 9, "payout": 80}, {"hits": 10, "payout": 100}]}
+                  {"spots": 1, "entries": [{"hits": 1, "payout": 3.96}]},
+                  {"spots": 2, "entries": [{"hits": 1, "payout": 1.9}, {"hits": 2, "payout": 4.5}]},
+                  {"spots": 3, "entries": [{"hits": 1, "payout": 1}, {"hits": 2, "payout": 3.1}, {"hits": 3, "payout": 10.4}]},
+                  {"spots": 4, "entries": [{"hits": 1, "payout": 0.8}, {"hits": 2, "payout": 1.8}, {"hits": 3, "payout": 5}, {"hits": 4, "payout": 22.5}]},
+                  {"spots": 5, "entries": [{"hits": 1, "payout": 0.25}, {"hits": 2, "payout": 1.4}, {"hits": 3, "payout": 4.1}, {"hits": 4, "payout": 16.5}, {"hits": 5, "payout": 36}]},
+                  {"spots": 6, "entries": [{"hits": 3, "payout": 1}, {"hits": 4, "payout": 3.68}, {"hits": 5, "payout": 7}, {"hits": 6, "payout": 16.5}, {"hits": 7, "payout": 40}]},
+                  {"spots": 7, "entries": [{"hits": 3, "payout": 0.47}, {"hits": 4, "payout": 3}, {"hits": 5, "payout": 4.5}, {"hits": 6, "payout": 14}, {"hits": 7, "payout": 31}, {"hits": 8, "payout": 60}]},
+                  {"spots": 8, "entries": [{"hits": 4, "payout": 2.2}, {"hits": 5, "payout": 4}, {"hits": 6, "payout": 13}, {"hits": 7, "payout": 22}, {"hits": 8, "payout": 55}, {"hits": 9, "payout": 70}]},
+                  {"spots": 9, "entries": [{"hits": 4, "payout": 1.55}, {"hits": 5, "payout": 3}, {"hits": 6, "payout": 8}, {"hits": 7, "payout": 15}, {"hits": 8, "payout": 44}, {"hits": 9, "payout": 60}, {"hits": 10, "payout": 85}]},
+                  {"spots": 10, "entries": [{"hits": 4, "payout": 1.4}, {"hits": 5, "payout": 2.25}, {"hits": 6, "payout": 4.5}, {"hits": 7, "payout": 8}, {"hits": 8, "payout": 17}, {"hits": 9, "payout": 50}, {"hits": 10, "payout": 80}, {"hits": 11, "payout": 100}]}
                 ]
               },
               {
                 "difficulty": "medium",
                 "payouts": [
                   {"spots": 1, "entries": [{"hits": 0, "payout": 0.4}, {"hits": 1, "payout": 2.75}]},
-                  {"spots": 2, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 1.8}, {"hits": 2, "payout": 5.1}]},
-                  {"spots": 3, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 2.8}, {"hits": 3, "payout": 50}]},
-                  {"spots": 4, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.7}, {"hits": 3, "payout": 10}, {"hits": 4, "payout": 100}]},
-                  {"spots": 5, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 1.4}, {"hits": 3, "payout": 4}, {"hits": 4, "payout": 14}, {"hits": 5, "payout": 390}]},
-                  {"spots": 6, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 3}, {"hits": 4, "payout": 9}, {"hits": 5, "payout": 180}, {"hits": 6, "payout": 710}]},
-                  {"spots": 7, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 2}, {"hits": 4, "payout": 7}, {"hits": 5, "payout": 30}, {"hits": 6, "payout": 400}, {"hits": 7, "payout": 800}]},
-                  {"spots": 8, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 2}, {"hits": 4, "payout": 4}, {"hits": 5, "payout": 11}, {"hits": 6, "payout": 67}, {"hits": 7, "payout": 400}, {"hits": 8, "payout": 900}]},
-                  {"spots": 9, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 2}, {"hits": 4, "payout": 2.5}, {"hits": 5, "payout": 5}, {"hits": 6, "payout": 15}, {"hits": 7, "payout": 100}, {"hits": 8, "payout": 500}, {"hits": 9, "payout": 1000}]},
-                  {"spots": 10, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 1.6}, {"hits": 4, "payout": 2}, {"hits": 5, "payout": 4}, {"hits": 6, "payout": 7}, {"hits": 7, "payout": 26}, {"hits": 8, "payout": 100}, {"hits": 9, "payout": 500}, {"hits": 10, "payout": 1000}]}
+                  {"spots": 2, "entries": [{"hits": 1, "payout": 1.8}, {"hits": 2, "payout": 5.1}]},
+                  {"spots": 3, "entries": [{"hits": 2, "payout": 2.8}, {"hits": 3, "payout": 50}]},
+                  {"spots": 4, "entries": [{"hits": 2, "payout": 1.7}, {"hits": 3, "payout": 10}, {"hits": 4, "payout": 100}]},
+                  {"spots": 5, "entries": [{"hits": 2, "payout": 1.4}, {"hits": 3, "payout": 4}, {"hits": 4, "payout": 14}, {"hits": 5, "payout": 390}]},
+                  {"spots": 6, "entries": [{"hits": 3, "payout": 3}, {"hits": 4, "payout": 9}, {"hits": 5, "payout": 180}, {"hits": 6, "payout": 710}]},
+                  {"spots": 7, "entries": [{"hits": 3, "payout": 2}, {"hits": 4, "payout": 7}, {"hits": 5, "payout": 30}, {"hits": 6, "payout": 400}, {"hits": 7, "payout": 800}]},
+                  {"spots": 8, "entries": [{"hits": 3, "payout": 2}, {"hits": 4, "payout": 4}, {"hits": 5, "payout": 11}, {"hits": 6, "payout": 67}, {"hits": 7, "payout": 400}, {"hits": 8, "payout": 900}]},
+                  {"spots": 9, "entries": [{"hits": 3, "payout": 2}, {"hits": 4, "payout": 2.5}, {"hits": 5, "payout": 5}, {"hits": 6, "payout": 15}, {"hits": 7, "payout": 100}, {"hits": 8, "payout": 500}, {"hits": 9, "payout": 1000}]},
+                  {"spots": 10, "entries": [{"hits": 3, "payout": 1.6}, {"hits": 4, "payout": 2}, {"hits": 5, "payout": 4}, {"hits": 6, "payout": 7}, {"hits": 7, "payout": 26}, {"hits": 8, "payout": 100}, {"hits": 9, "payout": 500}, {"hits": 10, "payout": 1000}]}
                 ]
               },
               {
                 "difficulty": "high",
                 "payouts": [
-                  {"spots": 1, "entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 3.96}]},
-                  {"spots": 2, "entries": [{"hits": 0, "payout": 0}, {"hits": 2, "payout": 17.1}]},
-                  {"spots": 3, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 81.5}]},
-                  {"spots": 4, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 10}, {"hits": 4, "payout": 259}]},
-                  {"spots": 5, "entries": [{"hits": 0, "payout": 0}, {"hits": 3, "payout": 4.5}, {"hits": 4, "payout": 48}, {"hits": 5, "payout": 450}]},
-                  {"spots": 6, "entries": [{"hits": 0, "payout": 0}, {"hits": 4, "payout": 11}, {"hits": 5, "payout": 350}, {"hits": 6, "payout": 710}]},
-                  {"spots": 7, "entries": [{"hits": 0, "payout": 0}, {"hits": 4, "payout": 7}, {"hits": 5, "payout": 90}, {"hits": 6, "payout": 400}, {"hits": 7, "payout": 800}]},
-                  {"spots": 8, "entries": [{"hits": 0, "payout": 0}, {"hits": 4, "payout": 5}, {"hits": 5, "payout": 20}, {"hits": 6, "payout": 270}, {"hits": 7, "payout": 600}, {"hits": 8, "payout": 900}]},
-                  {"spots": 9, "entries": [{"hits": 0, "payout": 0}, {"hits": 4, "payout": 4}, {"hits": 5, "payout": 11}, {"hits": 6, "payout": 56}, {"hits": 7, "payout": 500}, {"hits": 8, "payout": 800}, {"hits": 9, "payout": 1000}]},
-                  {"spots": 10, "entries": [{"hits": 0, "payout": 0}, {"hits": 4, "payout": 3.5}, {"hits": 5, "payout": 8}, {"hits": 6, "payout": 13}, {"hits": 7, "payout": 63}, {"hits": 8, "payout": 500}, {"hits": 9, "payout": 800}, {"hits": 10, "payout": 1000}]}
+                  {"spots": 1, "entries": [{"hits": 1, "payout": 3.96}]},
+                  {"spots": 2, "entries": [{"hits": 2, "payout": 17.1}]},
+                  {"spots": 3, "entries": [{"hits": 3, "payout": 81.5}]},
+                  {"spots": 4, "entries": [{"hits": 3, "payout": 10}, {"hits": 4, "payout": 259}]},
+                  {"spots": 5, "entries": [{"hits": 3, "payout": 4.5}, {"hits": 4, "payout": 48}, {"hits": 5, "payout": 450}]},
+                  {"spots": 6, "entries": [{"hits": 4, "payout": 11}, {"hits": 5, "payout": 350}, {"hits": 6, "payout": 710}]},
+                  {"spots": 7, "entries": [{"hits": 4, "payout": 7}, {"hits": 5, "payout": 90}, {"hits": 6, "payout": 400}, {"hits": 7, "payout": 800}]},
+                  {"spots": 8, "entries": [{"hits": 4, "payout": 5}, {"hits": 5, "payout": 20}, {"hits": 6, "payout": 270}, {"hits": 7, "payout": 600}, {"hits": 8, "payout": 900}]},
+                  {"spots": 9, "entries": [{"hits": 4, "payout": 4}, {"hits": 5, "payout": 11}, {"hits": 6, "payout": 56}, {"hits": 7, "payout": 500}, {"hits": 8, "payout": 800}, {"hits": 9, "payout": 1000}]},
+                  {"spots": 10, "entries": [{"hits": 4, "payout": 3.5}, {"hits": 5, "payout": 8}, {"hits": 6, "payout": 13}, {"hits": 7, "payout": 63}, {"hits": 8, "payout": 500}, {"hits": 9, "payout": 800}, {"hits": 10, "payout": 1000}]}
                 ]
               }
             ]

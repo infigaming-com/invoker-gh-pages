@@ -196,6 +196,22 @@ gameData := map[string]interface{}{
   - 剩余安全格子数
   - 下一步倍数预测
 
+- **倍率显示规范**：
+  - **重要**：倍率显示应使用向下取整（floor）而非四舍五入（round）
+  - 示例：1.997368 应显示为 1.99x，而非 2.00x
+  - 原因：避免给玩家造成误导，显示的倍率应始终小于或等于实际倍率
+  - 实现建议：
+    ```javascript
+    // JavaScript 示例
+    const displayMultiplier = Math.floor(actualMultiplier * 100) / 100;
+
+    // 或者使用 toFixed + parseFloat
+    const displayMultiplier = parseFloat(actualMultiplier.toFixed(2));
+    if (displayMultiplier > actualMultiplier) {
+        displayMultiplier = Math.floor(actualMultiplier * 100) / 100;
+    }
+    ```
+
 ### 2. 交互设计
 - **开始游戏**：
   - 选择网格大小（下拉菜单）
