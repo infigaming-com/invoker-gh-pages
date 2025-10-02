@@ -374,7 +374,107 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 6. **断线恢复**：支持通过 CHICKENROAD_RESUME_GAME 恢复游戏
 7. **RoundID格式**：使用纯数字格式，由 Sony Flake ID 生成器生成
 
-## 10. 相关文档
+## 10. 游戏配置获取
+
+### GET_GAME_CONFIG 请求
+
+获取 Chicken Road 游戏的完整配置信息，包括所有难度的倍率表。
+
+```json
+{
+  "i": "msg_config_001",
+  "t": "GET_GAME_CONFIG",
+  "p": {
+    "gameId": "inhousegame:chickenroad"
+  }
+}
+```
+
+### GET_GAME_CONFIG 响应
+
+```json
+{
+  "i": "msg_config_001",
+  "t": "GET_GAME_CONFIG_RESPONSE",
+  "p": {
+    "configs": [
+      {
+        "gameId": "inhousegame:chickenroad",
+        "config": {
+          "gameId": "inhousegame:chickenroad",
+          "gameName": "Chicken Road",
+          "category": "session",
+          "description": "Guide the chicken across the road",
+          "betInfo": [
+            {
+              "currency": "USD",
+              "currencyType": "fiat",
+              "defaultBet": 1,
+              "minBet": 0.1,
+              "maxBet": 100000,
+              "maxProfit": 100000
+            }
+          ],
+          "gameParameters": {
+            "difficulties": {
+              "easy": {
+                "maxSteps": 19,
+                "rtp": 98,
+                "maxMultiplier": 19.44,
+                "multipliers": [
+                  {"step": 1, "multiplier": 1.03},
+                  {"step": 2, "multiplier": 1.08},
+                  {"step": 3, "multiplier": 1.15},
+                  {"step": 4, "multiplier": 1.25},
+                  {"step": 5, "multiplier": 1.37},
+                  ...
+                  {"step": 19, "multiplier": 19.44}
+                ]
+              },
+              "medium": {
+                "maxSteps": 17,
+                "rtp": 98,
+                "maxMultiplier": 1788.8,
+                "multipliers": [...]
+              },
+              "hard": {
+                "maxSteps": 15,
+                "rtp": 98,
+                "maxMultiplier": 41321.43,
+                "multipliers": [...]
+              },
+              "expert": {
+                "maxSteps": 10,
+                "rtp": 98,
+                "maxMultiplier": 2542251.93,
+                "multipliers": [...]
+              }
+            },
+            "availableDifficulties": ["easy", "medium", "hard", "expert"],
+            "defaultDifficulty": "easy"
+          },
+          "defaultRtp": "98.0%"
+        }
+      }
+    ]
+  }
+}
+```
+
+### 配置响应说明
+
+#### multipliers 字段
+`multipliers` 数组包含该难度下所有步骤的倍率信息：
+- `step`: 步数（1 到 maxSteps）
+- `multiplier`: 达到该步时的倍率
+- 前端可以使用此数据直接显示每一步的倍率，无需自己实现复杂的计算公式
+
+#### 使用场景
+1. **游戏界面显示**：在游戏开始前显示完整的倍率序列（如截图中的 1.15x, 1.37x, 1.64x...）
+2. **策略辅助**：帮助玩家制定前进策略
+3. **数据一致性**：确保前后端倍率计算完全一致
+
+## 11. 相关文档
 
 - [WebSocket 通用接口](./common-websocket-api-zh.md)
 - [Chicken Road 游戏详细设计](./chickenroad-detailed-design-zh.md)
