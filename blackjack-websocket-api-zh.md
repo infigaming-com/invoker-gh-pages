@@ -41,15 +41,19 @@
   "payload": {
     "gameType": "inhousegame:blackjack",
     "amount": "10.00",
-    "currency": "USD",
-    "gameParams": {
-      "blackjack": {
-        "action": "start"
-      }
-    }
+    "currency": "USD"
   }
 }
 ```
+
+**参数说明**：
+- `gameType`: 游戏类型标识，固定为 `"inhousegame:blackjack"`
+- `amount`: 下注金额（字符串格式，最多8位小数）
+- `currency`: 货币类型（如 `"USD"`）
+
+**注意**：
+- 客户端种子通过专门的 Seed Service API 预先设置，不在此请求中传递
+- Blackjack 无需额外游戏参数，所有操作通过专属消息类型（Hit、Stand、Double、Split 等）处理
 
 #### 响应：BLACKJACK_GAME_STATE
 ```json
@@ -60,15 +64,18 @@
     "roundId": "123456789",
     "status": "playing",
     "betAmount": "10.00",
-    "currency": "USD",
+    "totalBet": "10.00",
     "playerHands": [
       {
-        "handIndex": 0,
         "cards": [
           {"suit": "hearts", "rank": "A", "value": 11},
           {"suit": "spades", "rank": "K", "value": 10}
         ],
         "status": "blackjack",
+        "betAmount": 10.00,
+        "isDoubled": false,
+        "isSplit": false,
+        "isFromAces": false,
         "softValue": 21,
         "hardValue": 21,
         "bestValue": 21,
@@ -80,36 +87,38 @@
       }
     ],
     "dealerHand": {
+      "cards": [
+        {"suit": "diamonds", "rank": "10", "value": 10},
+        {"suit": "hearts", "rank": "7", "value": 7}
+      ],
+      "status": "active",
       "showCard": {"suit": "diamonds", "rank": "10", "value": 10},
-      "cardCount": 2,
-      "showValue": 10,
-      "hasBlackjack": false,
-      "isRevealed": false
+      "holeCard": {"suit": "hearts", "rank": "7", "value": 7},
+      "softValue": 10,
+      "hardValue": 10,
+      "bestValue": 10,
+      "isRevealed": false,
+      "hasBlackjack": false
     },
     "canInsure": false,
     "insurance": null,
-    "activeHandIndex": 0,
-    "createdAt": 1700000000000
+    "activeHandIndex": 0
   }
 }
 ```
 
+**注意**：游戏进行中,`playerHands` 不包含 `payout` 和 `result` 字段,只在游戏结束后返回这些字段。
+
 ### 3.2 要牌（Hit）
 
-#### 请求：PLACE_BET / BLACKJACK_HIT
+#### 请求：BLACKJACK_HIT
 ```json
 {
   "id": "msg_124",
-  "type": "PLACE_BET",
+  "type": "BLACKJACK_HIT",
   "payload": {
-    "gameType": "inhousegame:blackjack",
-    "gameParams": {
-      "blackjack": {
-        "action": "hit",
-        "roundId": "123456789",
-        "handIndex": 0
-      }
-    }
+    "roundId": "123456789",
+    "handIndex": 0
   }
 }
 ```
@@ -153,62 +162,85 @@
 
 ### 3.3 停牌（Stand）
 
-#### 请求：PLACE_BET / BLACKJACK_STAND
+#### 请求：BLACKJACK_STAND
 ```json
 {
   "id": "msg_125",
-  "type": "PLACE_BET",
+  "type": "BLACKJACK_STAND",
   "payload": {
-    "gameType": "inhousegame:blackjack",
-    "gameParams": {
-      "blackjack": {
-        "action": "stand",
-        "roundId": "123456789",
-        "handIndex": 0
-      }
-    }
+    "roundId": "123456789",
+    "handIndex": 0
   }
 }
 ```
 
-#### 响应：BLACKJACK_GAME_STATE + BLACKJACK_DEALER_REVEAL
+#### 响应：BLACKJACK_GAME_STATE
 ```json
 {
   "id": "msg_125",
-  "type": "BLACKJACK_DEALER_REVEAL",
+  "type": "BLACKJACK_GAME_STATE",
   "payload": {
     "roundId": "123456789",
+    "status": "finished",
+    "betAmount": "10.00",
+    "totalBet": "10.00",
+    "playerHands": [
+      {
+        "cards": [
+          {"suit": "hearts", "rank": "K", "value": 10},
+          {"suit": "spades", "rank": "Q", "value": 10}
+        ],
+        "status": "win",
+        "betAmount": 10.00,
+        "isDoubled": false,
+        "isSplit": false,
+        "isFromAces": false,
+        "softValue": 20,
+        "hardValue": 20,
+        "bestValue": 20,
+        "isBlackjack": false,
+        "canHit": false,
+        "canStand": false,
+        "canDouble": false,
+        "canSplit": false,
+        "payout": 20.00,
+        "result": "win"
+      }
+    ],
     "dealerHand": {
       "cards": [
         {"suit": "diamonds", "rank": "10", "value": 10},
         {"suit": "hearts", "rank": "7", "value": 7}
       ],
+      "status": "stand",
       "softValue": 17,
       "hardValue": 17,
       "bestValue": 17,
-      "status": "stand",
-      "isRevealed": true
-    }
+      "isRevealed": true,
+      "hasBlackjack": false
+    },
+    "canInsure": false,
+    "insurance": null,
+    "activeHandIndex": 0,
+    "totalPayout": 20.00,
+    "finalPayout": 20.00,
+    "dealerRevealed": true
   }
 }
 ```
 
+**注意**：当游戏状态为 `finished` 或 `cashed_out` 时,响应包含完整的结算信息(`payout`、`result`、`totalPayout`、`finalPayout`)。
+
 ### 3.4 加倍（Double Down）
 
-#### 请求：PLACE_BET / BLACKJACK_DOUBLE
+#### 请求：BLACKJACK_DOUBLE
 ```json
 {
   "id": "msg_126",
-  "type": "PLACE_BET",
+  "type": "BLACKJACK_DOUBLE",
   "payload": {
-    "gameType": "inhousegame:blackjack",
-    "gameParams": {
-      "blackjack": {
-        "action": "double",
-        "roundId": "123456789",
-        "handIndex": 0
-      }
-    }
+    "roundId": "123456789",
+    "handIndex": 0
   }
 }
 ```
@@ -241,20 +273,14 @@
 
 ### 3.5 分牌（Split）
 
-#### 请求：PLACE_BET / BLACKJACK_SPLIT
+#### 请求：BLACKJACK_SPLIT
 ```json
 {
   "id": "msg_127",
-  "type": "PLACE_BET",
+  "type": "BLACKJACK_SPLIT",
   "payload": {
-    "gameType": "inhousegame:blackjack",
-    "gameParams": {
-      "blackjack": {
-        "action": "split",
-        "roundId": "123456789",
-        "handIndex": 0
-      }
-    }
+    "roundId": "123456789",
+    "handIndex": 0
   }
 }
 ```
@@ -303,20 +329,14 @@
 
 ### 3.6 保险（Insurance）
 
-#### 请求：PLACE_BET / BLACKJACK_INSURANCE
+#### 请求：BLACKJACK_INSURANCE
 ```json
 {
   "id": "msg_128",
-  "type": "PLACE_BET",
+  "type": "BLACKJACK_INSURANCE",
   "payload": {
-    "gameType": "inhousegame:blackjack",
-    "gameParams": {
-      "blackjack": {
-        "action": "insurance",
-        "roundId": "123456789",
-        "acceptInsurance": true
-      }
-    }
+    "roundId": "123456789",
+    "acceptInsurance": true
   }
 }
 ```
@@ -361,25 +381,38 @@
 
 ### 3.7 游戏结果
 
-#### 响应：BLACKJACK_GAME_RESULT
+游戏结束时通过 `BLACKJACK_GAME_STATE` 消息返回完整结果,不再使用单独的 `BLACKJACK_GAME_RESULT` 消息类型。
+
+#### 响应：BLACKJACK_GAME_STATE（游戏结束）
 ```json
 {
   "id": "msg_129",
-  "type": "BLACKJACK_GAME_RESULT",
+  "type": "BLACKJACK_GAME_STATE",
   "payload": {
     "roundId": "123456789",
-    "status": "finished",
+    "status": "cashed_out",
+    "betAmount": "10.00",
+    "totalBet": "10.00",
     "playerHands": [
       {
-        "handIndex": 0,
         "cards": [
           {"suit": "hearts", "rank": "K", "value": 10},
           {"suit": "spades", "rank": "Q", "value": 10}
         ],
         "status": "win",
+        "betAmount": 10.00,
+        "isDoubled": false,
+        "isSplit": false,
+        "isFromAces": false,
+        "softValue": 20,
+        "hardValue": 20,
         "bestValue": 20,
-        "betAmount": "10.00",
-        "payout": "10.00",
+        "isBlackjack": false,
+        "canHit": false,
+        "canStand": false,
+        "canDouble": false,
+        "canSplit": false,
+        "payout": 20.00,
         "result": "win"
       }
     ],
@@ -388,23 +421,26 @@
         {"suit": "diamonds", "rank": "10", "value": 10},
         {"suit": "hearts", "rank": "7", "value": 7}
       ],
-      "bestValue": 17,
       "status": "stand",
-      "isRevealed": true
+      "softValue": 17,
+      "hardValue": 17,
+      "bestValue": 17,
+      "isRevealed": true,
+      "hasBlackjack": false
     },
+    "canInsure": false,
     "insurance": null,
-    "totalBet": "10.00",
-    "totalPayout": "20.00",
-    "netProfit": "10.00",
-    "provablyFair": {
-      "clientSeed": "user_seed_123",
-      "serverSeedHash": "hash_abc123",
-      "nonce": 1
-    },
-    "completedAt": 1700000100000
+    "activeHandIndex": 0,
+    "totalPayout": 20.00,
+    "finalPayout": 20.00
   }
 }
 ```
+
+**字段说明**：
+- `totalPayout`：所有手牌的总赔付金额（包括保险赔付）
+- `finalPayout`：最终赔付金额（等于 totalPayout）
+- **已移除** `netProfit` 字段（可由客户端计算：finalPayout - totalBet）
 
 ### 3.8 获取游戏状态
 
@@ -469,7 +505,6 @@
 | INVALID_REQUEST | 无效请求 |
 | INVALID_AMOUNT | 无效金额 |
 | INSUFFICIENT_BALANCE | 余额不足 |
-| INVALID_CLIENT_SEED | 无效客户端种子 |
 | GAME_NOT_FOUND | 游戏不存在 |
 | INVALID_ACTION | 无效操作 |
 | ACTION_NOT_ALLOWED | 操作不允许 |
@@ -520,48 +555,48 @@ interface Card {
 ### 6.2 手牌数据
 ```typescript
 interface PlayerHand {
-  handIndex: number;      // 手牌索引
   cards: Card[];         // 牌列表
   status: string;        // 手牌状态
+  betAmount: number;     // 投注金额
+  isDoubled: boolean;    // 是否已加倍
+  isSplit: boolean;      // 是否由分牌产生
+  isFromAces: boolean;   // 是否由A+A分牌产生
   softValue: number;     // 软牌点数
   hardValue: number;     // 硬牌点数
   bestValue: number;     // 最佳点数
-  betAmount: string;     // 投注金额
-  isDoubled?: boolean;   // 是否已加倍
-  isSplit?: boolean;     // 是否由分牌产生
-  isFromAces?: boolean;  // 是否由A+A分牌产生
-  isBlackjack?: boolean; // 是否天生21点
+  isBlackjack: boolean;  // 是否天生21点
   canHit: boolean;       // 可否要牌
   canStand: boolean;     // 可否停牌
   canDouble: boolean;    // 可否加倍
   canSplit: boolean;     // 可否分牌
-  payout?: string;       // 赔付金额
-  result?: string;       // 结果：win/lose/push
+  payout?: number;       // 赔付金额（仅游戏结束时返回）
+  result?: string;       // 结果：win/lose/push（仅游戏结束时返回）
 }
 ```
+
+**注意**：`payout` 和 `result` 字段只在游戏结束时(`status` 为 `finished` 或 `cashed_out`)返回。
 
 ### 6.3 庄家手牌数据
 ```typescript
 interface DealerHand {
-  showCard?: Card;       // 明牌（游戏中）
-  cards?: Card[];        // 所有牌（游戏结束）
-  cardCount: number;     // 牌数量
-  showValue: number;     // 明牌点数
-  softValue?: number;    // 软牌点数
-  hardValue?: number;    // 硬牌点数
-  bestValue?: number;    // 最佳点数
-  status?: string;       // 状态
-  hasBlackjack: boolean; // 是否有Blackjack
+  cards: Card[];         // 所有牌（包括明牌和暗牌）
+  status: string;        // 状态
+  showCard?: Card;       // 明牌
+  holeCard?: Card;       // 暗牌
+  softValue: number;     // 软牌点数
+  hardValue: number;     // 硬牌点数
+  bestValue: number;     // 最佳点数
   isRevealed: boolean;   // 暗牌是否已翻开
+  hasBlackjack: boolean; // 是否有Blackjack
 }
 ```
 
 ### 6.4 保险数据
 ```typescript
 interface Insurance {
-  amount: string;        // 保险金额
+  amount: number;        // 保险金额
   status: string;        // 状态：pending/won/lost
-  payout?: string;       // 赔付金额
+  payout?: number;       // 赔付金额（仅结算后返回）
 }
 ```
 
@@ -604,7 +639,38 @@ interface Insurance {
 ### 8.2 响应
 返回完整游戏状态，允许继续游戏
 
-## 9. 实现状态
+## 9. 客户端种子管理
+
+Blackjack 游戏使用可证明公平机制，客户端种子通过专门的 Seed Service API 管理：
+
+### 9.1 设置客户端种子
+在开始游戏前，必须通过 Seed Service API 设置客户端种子：
+- 使用 `UseNewSeeds` API 为 Blackjack 游戏设置新的客户端种子
+- 客户端种子长度要求：8-256 字符
+- 每个游戏独立管理种子
+
+### 9.2 种子使用流程
+1. **游戏开始前**：通过 Seed Service API 设置客户端种子
+2. **游戏进行中**：系统自动使用已设置的种子
+3. **游戏结束后**：可验证游戏结果的公平性
+
+### 9.3 相关 API
+- `UseNewSeeds`：设置新的客户端种子
+- `GenerateClientSeed`：生成安全的随机种子
+- `GetGameSeedInfo`：查看当前种子信息
+
+详见 [WebSocket 通用接口文档](./common-websocket-api-zh.md)
+
+## 10. 注意事项
+
+1. **客户端种子**：必须在游戏开始前通过 Seed Service API 设置，游戏进行中无法更改
+2. **金额格式**：所有金额字段使用字符串格式，最多8位小数
+3. **倍率精度**：倍率显示为2位小数（四舍五入）
+4. **并发限制**：同一玩家同一时刻只能有一局进行中的游戏
+5. **状态持久化**：游戏状态会自动保存，支持断线重连
+6. **幂等性**：重复的操作请求会返回相同的结果，不会改变游戏状态
+
+## 11. 实现状态
 
 - ✅ 开始游戏
 - ✅ 要牌操作

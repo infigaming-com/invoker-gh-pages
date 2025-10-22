@@ -36,6 +36,18 @@ Invoker Server 的 WebSocket API 文档已按游戏类型拆分为多个独立�
   - 三种难度等级
   - 最高倍率: 1000x+
 
+- **[Limbo 游戏 API](./limbo-websocket-api-zh.md)**
+  - 倍率预测游戏
+  - 目标倍率: 1.01-1,000,000.00
+  - 指数分布奖励
+  - RTP: 99%
+
+- **[Dragon Tiger 游戏 API](./dragontiger-websocket-api-zh.md)**
+  - 经典龙虎斗卡牌游戏
+  - 三种投注类型（龙/虎/和）
+  - 5% 佣金机制
+  - RTP: 97.1%
+
 #### 会话型游戏（Session Games）
 
 - **[Mines 游戏 API](./mines-websocket-api-zh.md)**
@@ -103,6 +115,8 @@ const ws = new WebSocket('wss://dev.hicasino.xyz/v1/ws?token=YOUR_JWT_TOKEN');
 | HiLo | 会话游戏 | ✅ 已实现 | [查看文档](./hilo-websocket-api-zh.md) |
 | Chicken Road | 会话游戏 | ✅ 已实现 | [查看文档](./chickenroad-websocket-api-zh.md) |
 | Blackjack | 会话游戏 | ✅ 已实现 | [查看文档](./blackjack-websocket-api-zh.md) |
+| Limbo | 即时游戏 | ✅ 已实现 | [查看文档](./limbo-websocket-api-zh.md) |
+| Dragon Tiger | 即时游戏 | ✅ 已实现 | [查看文档](./dragontiger-websocket-api-zh.md) |
 
 ## 相关文档
 

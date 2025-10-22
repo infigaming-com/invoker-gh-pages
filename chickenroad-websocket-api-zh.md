@@ -7,7 +7,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 ## 游戏特性
 
 - **会话型游戏**：支持逐步前进，可随时提现
-- **四种难度**：easy、medium、hard、expert
+- **四种难度**：easy、medium、hard、daredevil
 - **动态倍率**：倍率通过公式动态计算，保证 98% RTP
 - **动态概率**：每一步的成功概率基于难度和进度
 - **断线重连**：支持游戏恢复功能
@@ -41,16 +41,16 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 | 参数 | 类型 | 必需 | 说明 |
 |------|------|------|------|
 | `amount` | string | 是 | 下注金额，空字符串或"0"为试玩模式 |
-| `difficulty` | string | 是 | 难度等级：easy、medium、hard、expert |
+| `difficulty` | string | 是 | 难度等级：easy、medium、hard、daredevil |
 
 ### 难度配置
 
 | 难度 | 步数 | RTP | 特点 |
 |------|------|-----|------|
-| Easy | 19 | 98% | 步数多，适合稳健玩家 |
-| Medium | 17 | 98% | 中等步数，平衡风险与回报 |
-| Hard | 15 | 98% | 较少步数，高风险高回报 |
-| Expert | 10 | 98% | 极限挑战，倍率增长极快 |
+| Easy | 24 | 98.5% | 步数多，适合稳健玩家 |
+| Medium | 22 | 97.5% | 中等步数，平衡风险与回报 |
+| Hard | 20 | 96.5% | 较少步数，高风险高回报 |
+| Daredevil | 15 | 96.0% | 极限挑战，倍率增长极快 |
 
 **倍率计算说明**：
 - 倍率通过公式动态计算：`倍率 = (1 ÷ 获胜率) × 0.98`
@@ -273,7 +273,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 }
 ```
 
-## 6. CHICKENROAD_RESUME - 恢复游戏
+## 6. CHICKENROAD_RESUME_GAME - 恢复游戏
 
 恢复未完成的游戏。
 
@@ -282,9 +282,9 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 ```json
 {
   "i": "msg_806",
-  "t": "CHICKENROAD_RESUME",
+  "t": "CHICKENROAD_RESUME_GAME",
   "p": {
-    "roundId": "123456789012345678"  // 可选，不提供则恢复最新的活跃游戏
+    "roundId": "123456789012345678"
   }
 }
 ```
@@ -418,7 +418,7 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
           "gameParameters": {
             "difficulties": {
               "easy": {
-                "maxSteps": 19,
+                "maxSteps": 24,
                 "rtp": 98,
                 "maxMultiplier": 19.44,
                 "multipliers": [
@@ -428,29 +428,29 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
                   {"step": 4, "multiplier": 1.25},
                   {"step": 5, "multiplier": 1.37},
                   ...
-                  {"step": 19, "multiplier": 19.44}
+                  {"step": 24, "multiplier": 19.44}
                 ]
               },
               "medium": {
-                "maxSteps": 17,
+                "maxSteps": 22,
                 "rtp": 98,
                 "maxMultiplier": 1788.8,
                 "multipliers": [...]
               },
               "hard": {
-                "maxSteps": 15,
+                "maxSteps": 20,
                 "rtp": 98,
                 "maxMultiplier": 41321.43,
                 "multipliers": [...]
               },
-              "expert": {
-                "maxSteps": 10,
+              "daredevil": {
+                "maxSteps": 15,
                 "rtp": 98,
                 "maxMultiplier": 2542251.93,
                 "multipliers": [...]
               }
             },
-            "availableDifficulties": ["easy", "medium", "hard", "expert"],
+            "availableDifficulties": ["easy", "medium", "hard", "daredevil"],
             "defaultDifficulty": "easy"
           },
           "defaultRtp": "98.0%"

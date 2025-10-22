@@ -209,20 +209,52 @@ type PlinkoOutcome struct {
   - 返回：完整游戏结果
 
 ### 4. 倍率配置管理
+
+倍率配置通过结构化的 Protobuf 消息传递给客户端：
+
+```protobuf
+message PlinkoGameParameters {
+  map<string, PlinkoPayoutTable> payout_tables = 7;  // 按难度分类
+}
+
+message PlinkoPayoutTable {
+  map<string, PlinkoRowMultipliers> rows = 1;  // 按行数分类
+}
+
+message PlinkoRowMultipliers {
+  repeated double multipliers = 1;  // 倍率数组
+}
+```
+
+**示例：通过 GET_GAME_CONFIG 获取配置**
+```json
+{
+  "gameParameters": {
+    "payoutTables": {
+      "low": {
+        "rows": {
+          "8": { "multipliers": [5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6] },
+          "10": { "multipliers": [8.9, 3, 1.4, 1.1, 1, 0.5, 1, 1.1, 1.4, 3, 8.9] }
+        }
+      },
+      "medium": { /* ... */ },
+      "high": { /* ... */ }
+    }
+  }
+}
+```
+
+**内部实现**：
 ```go
-// 倍率配置结构
+// internal/biz/game/plinko/plinko.go
 var multiplierConfig = map[string]map[int][]float64{
     "low": {
         8:  {5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6},
         10: {8.9, 3, 1.4, 1.1, 1, 0.5, 1, 1.1, 1.4, 3, 8.9},
         // ... 更多配置
     },
-    "medium": {
-        // ... 配置
-    },
-    "high": {
-        // ... 配置
-    },
+    "medium": { /* ... */ },
+    "high": { /* ... */ },
 }
 ```
 

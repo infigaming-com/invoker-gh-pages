@@ -158,34 +158,31 @@ const (
 
 #### 核心游戏结构
 ```go
-type BlackjackGame struct {
-    // 基础信息
-    Status       GameStatus
-    RoundID      string
-    BetAmount    float64
-    
-    // 手牌信息
-    PlayerHands  []PlayerHand  // 支持多手牌（Split后）
-    ActiveHandIndex int        // 当前操作的手牌索引
-    DealerHand   DealerHand
-    
-    // 保险
-    Insurance    *InsuranceBet
-    
+type Game struct {
+    game.Game    // 嵌入基类（包含 RoundID, BetAmount, ClientSeed, ServerSeed, Nonce, FinalPayout, RTP）
+
+    // 游戏状态
+    Status          GameStatus
+    PlayerHands     []PlayerHand
+    ActiveHandIndex int
+    DealerHand      DealerHand
+    Insurance       *Insurance
+    CanInsure       bool
+
     // 牌序
-    DeckSequence []Card
-    NextCardIdx  int
-    
-    // 可证明公平
-    ClientSeed   string
-    ServerSeed   string
-    Nonce        int64
-    
+    DeckSequence    []Card
+    NextCardIdx     int
+
     // 结算信息
-    TotalPayout  float64
-    IsProfitable bool
+    TotalBet        float64
+    TotalPayout     float64
 }
 ```
+
+**架构变更**：
+- 重命名 `BlackjackGame` 为 `Game`
+- 嵌入 `game.Game` 基类,复用通用字段
+- 移除冗余字段(`IsProfitable`等),统一使用基类的 `FinalPayout`
 
 #### 玩家手牌结构
 ```go
@@ -193,38 +190,45 @@ type PlayerHand struct {
     Cards         []Card
     Status        HandStatus
     BetAmount     float64
-    
+
     // 状态标记
     IsDoubled     bool  // 是否已加倍
     IsSplit       bool  // 是否由分牌产生
     IsFromAces    bool  // 是否由A+A分牌产生
-    
+
     // 计算值
     SoftValue     int   // 软牌点数
     HardValue     int   // 硬牌点数
     BestValue     int   // 最佳点数（不超过21的最大值）
-    
+    IsBlackjack   bool  // 是否天生21点
+
     // 可用操作
     CanHit        bool
     CanStand      bool
     CanDouble     bool
     CanSplit      bool
+
+    // 结算信息（仅游戏结束时返回）
+    Payout        float64  // 赔付金额
+    Result        string   // 结果：win/lose/push
 }
 ```
+
+**注意**：`Payout` 和 `Result` 字段只在游戏结束时返回给客户端。
 
 #### 庄家手牌结构
 ```go
 type DealerHand struct {
     Cards         []Card
     Status        HandStatus
-    ShowCard      Card    // 明牌
-    HoleCard      Card    // 暗牌
-    
+    ShowCard      *Card   // 明牌（指针类型）
+    HoleCard      *Card   // 暗牌（指针类型）
+
     // 计算值
     SoftValue     int
     HardValue     int
     BestValue     int
-    
+
     // 状态
     IsRevealed    bool    // 暗牌是否已翻开
     HasBlackjack  bool
@@ -270,7 +274,7 @@ type DealerHand struct {
 ### 4.1 消息类型
 
 #### 请求消息
-- `PLACE_BET` - 统一投注接口（通过action参数区分）
+- `PLACE_BET` - 开始游戏（gameParams.blackjack 为空对象）
 - `BLACKJACK_HIT` - 要牌
 - `BLACKJACK_STAND` - 停牌
 - `BLACKJACK_DOUBLE` - 加倍
@@ -278,17 +282,27 @@ type DealerHand struct {
 - `BLACKJACK_INSURANCE` - 购买保险
 - `BLACKJACK_GET_STATE` - 获取游戏状态
 - `BLACKJACK_CHECK_ACTIVE` - 检查活跃游戏
+- `BLACKJACK_RESUME_GAME` - 恢复游戏
 
 #### 响应消息
-- `BLACKJACK_GAME_STATE` - 游戏状态更新
-- `BLACKJACK_DEALER_REVEAL` - 庄家翻牌
-- `BLACKJACK_GAME_RESULT` - 游戏结果
+- `BLACKJACK_GAME_STATE` - 统一的游戏状态响应
+- `BLACKJACK_CHECK_ACTIVE_RESPONSE` - 检查活跃游戏响应
+- `BLACKJACK_RESUME_GAME_RESPONSE` - 恢复游戏响应
 
-### 4.2 状态推送
-- 每次操作后推送完整游戏状态
-- 包含所有手牌信息
-- 显示可用操作
-- 实时更新点数和赔率
+**注意**：不再使用单独的 `BLACKJACK_DEALER_REVEAL` 和 `BLACKJACK_GAME_RESULT` 消息类型,所有状态更新统一使用 `BLACKJACK_GAME_STATE`。
+
+### 4.2 状态推送策略
+
+#### 游戏进行中
+- 推送 `BLACKJACK_GAME_STATE`,包含游戏状态和可用操作
+- `playerHands` 不包含 `payout` 和 `result` 字段
+- 不暴露输赢信息,遵循会话游戏隐私保护设计
+
+#### 游戏结束后
+- 推送 `BLACKJACK_GAME_STATE`,包含完整结算信息
+- `playerHands` 包含 `payout` 和 `result` 字段
+- 返回 `totalPayout` 和 `finalPayout` 字段
+- 移除了冗余的 `netProfit` 字段（客户端可自行计算）
 
 ## 5. 特殊规则处理
 

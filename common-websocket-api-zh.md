@@ -245,7 +245,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 }
 ```
 
-**注意**：`payoutTables` 字段为嵌套数组格式：
+**注意**：Keno 的 `payoutTables` 字段为嵌套数组格式：
 - 包含 low、classic、medium、high 四个难度的完整赔率表
 - 每个难度对象包含：
   - `difficulty`: 难度标识
@@ -255,6 +255,139 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   - `entries`: 该选择数量下的所有赔率条目
     - `hits`: 命中数量
     - `payout`: 对应的赔率倍数
+
+**响应消息**（Plinko 游戏示例）：
+```json
+{
+  "i": "msg_003",
+  "t": "GET_GAME_CONFIG_RESPONSE",
+  "p": {
+    "configs": [
+      {
+        "gameId": "inhousegame:plinko",
+        "config": {
+          "id": 2000008,
+          "gameName": "Plinko",
+          "gameId": "inhousegame:plinko",
+          "category": "instant",
+          "status": "active",
+          "description": "Drop balls through pegs to win multipliers",
+          "defaultRTP": "97%",
+          "features": ["provably_fair", "instant_play", "risk_levels"],
+          "betInfo": [
+            {
+              "currency": "USD",
+              "currencyType": "fiat",
+              "defaultBet": 0.2,
+              "minBet": 0.1,
+              "maxBet": 400,
+              "maxProfit": 20000
+            }
+          ],
+          "gameParameters": {
+            "minRows": 8,
+            "maxRows": 16,
+            "defaultRows": 14,
+            "defaultDifficulty": "medium",
+            "difficultyLevels": ["low", "medium", "high"],
+            "availableRows": [8, 10, 12, 14, 16],
+            "payoutTables": {
+              "low": {
+                "rows": {
+                  "8": { "multipliers": [5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6] },
+                  "10": { "multipliers": [8.9, 3, 1.4, 1.1, 1, 0.5, 1, 1.1, 1.4, 3, 8.9] },
+                  "12": { "multipliers": [10, 3, 1.6, 1.4, 1.1, 1, 0.5, 1, 1.1, 1.4, 1.6, 3, 10] }
+                  // ... 14、16 行配置
+                }
+              },
+              "medium": {
+                "rows": {
+                  "8": { "multipliers": [13, 3, 1.3, 0.7, 0.4, 0.7, 1.3, 3, 13] },
+                  "10": { "multipliers": [22, 5, 2, 1.4, 0.6, 0.4, 0.6, 1.4, 2, 5, 22] }
+                  // ... 12、14、16 行配置
+                }
+              },
+              "high": {
+                "rows": {
+                  "8": { "multipliers": [29, 4, 1.5, 0.3, 0.2, 0.3, 1.5, 4, 29] },
+                  "16": { "multipliers": [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000] }
+                  // ... 其他行配置
+                }
+              }
+            }
+          },
+          "rtpConfig": {
+            "defaultRtp": "97%"
+          },
+          "commissionRate": "1%",
+          "maxRewardMultiplier": 1000
+        }
+      }
+    ]
+  }
+}
+```
+
+**注意**：Plinko 的 `payoutTables` 字段为嵌套 map 格式：
+- 第一层 map：按难度分类（"low"、"medium"、"high"）
+- 第二层 map：按行数分类（"8"、"10"、"12"、"14"、"16"）
+- 最内层：`multipliers` 数组包含该配置下所有槽位的倍率
+- 倍率数组长度 = 行数 + 1（例如：8行有9个槽位）
+- 倍率分布对称，从中心向两边递增
+
+**响应消息**（Dragon Tiger 游戏示例）：
+```json
+{
+  "i": "msg_004",
+  "t": "GET_GAME_CONFIG_RESPONSE",
+  "p": {
+    "configs": [
+      {
+        "gameId": "inhousegame:dragontiger",
+        "config": {
+          "id": 2000011,
+          "gameName": "Dragon Tiger",
+          "gameId": "inhousegame:dragontiger",
+          "category": "instant",
+          "status": "active",
+          "description": "Classic Dragon vs Tiger card comparison game",
+          "defaultRTP": "98.5%",
+          "features": ["provably_fair", "instant_play", "multi_bet", "tie_refund"],
+          "betInfo": [
+            {
+              "currency": "USD",
+              "currencyType": "fiat",
+              "defaultBet": 1,
+              "minBet": 0.1,
+              "maxBet": 1000,
+              "maxProfit": 50000
+            }
+          ],
+          "gameParameters": {
+            "commissionRate": 0.05,
+            "dragonOdds": 1.0,
+            "tigerOdds": 1.0,
+            "tieOdds": 11.0,
+            "tieRefundRate": 0.5
+          },
+          "rtpConfig": {
+            "defaultRtp": "98.5%"
+          },
+          "commissionRate": "5%",
+          "maxRewardMultiplier": 11
+        }
+      }
+    ]
+  }
+}
+```
+
+**注意**：Dragon Tiger 的 `gameParameters` 字段说明：
+- `commissionRate`: 佣金费率（通常为 5%）
+- `dragonOdds`: 龙方赔率（1赔1）
+- `tigerOdds`: 虎方赔率（1赔1）
+- `tieOdds`: 和局赔率（1赔11）
+- `tieRefundRate`: 平局时的退款比例（通常为 50%）
 
 ### 2.3 GET_BALANCE - 获取余额
 
@@ -668,6 +801,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 - [Plinko 游戏 WebSocket API](./plinko-websocket-api-zh.md)
 - [HiLo 游戏 WebSocket API](./hilo-websocket-api-zh.md)
 - [Chicken Road 游戏 WebSocket API](./chickenroad-websocket-api-zh.md)
+- [Dragon Tiger 游戏 WebSocket API](./dragontiger-websocket-api-zh.md)
 
 ### 其他文档
 - [详细设计](./detailed-design-zh.md) - 架构和设计原则
