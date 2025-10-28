@@ -65,11 +65,15 @@ HiLo 是一款经典的高低牌游戏。玩家需要预测下一张牌是比当
 |------|------|------|
 | `roundId` | string | 游戏回合ID，纯数字格式 |
 | `status` | string | 游戏状态：playing、finished、cashed_out |
+| `betAmount` | string | 下注金额（decimal 类型，字符串格式） |
 | `currentCard` | number | 当前牌面值（1-13） |
 | `cardHistory` | number[] | 历史牌面记录 |
 | `currentMultiplier` | string | 当前累积赔率 |
-| `canCashout` | boolean | 是否可以提现 |
+| `multiplierHistory` | number[] | 历史赔率记录 |
+| `canCashout` | boolean | 是否可以提现（至少猜对一次后为 true） |
+| `guessCount` | number | 已猜测次数 |
 | `higherProbability` | number | 下张牌更高的概率 |
+| `lowerProbability` | number | 下张牌更低的概率 |
 | `higherMultiplier` | string | 选择"higher"的赔率 |
 | `lowerMultiplier` | string | 选择"lower"的赔率 |
 

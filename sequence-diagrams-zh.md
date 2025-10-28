@@ -8,14 +8,15 @@
 5. [21点(Blackjack)游戏流程](#21点blackjack游戏流程)
 6. [地雷(Mines)游戏流程](#地雷mines游戏流程)
 7. [Keno游戏流程](#keno-游戏流程-已实现)
-8. [事件订阅流程](#事件订阅流程)
-9. [实时投注活动广播流程](#实时投注活动广播流程)
-10. [投注活动历史获取流程](#投注活动历史获取流程-已实现)
-11. [错误处理场景](#错误处理场景)
-12. [可证明公平验证](#可证明公平验证)
-13. [服务端种子轮换流程](#服务端种子轮换流程)
-14. [集成 API 流程](#集成-api-流程)
-15. [Game Aggregator Provider API 集成](#game-aggregator-provider-api-集成)
+8. [Plinko 游戏余额延迟结算流程](#plinko-游戏余额延迟结算流程)
+9. [事件订阅流程](#事件订阅流程)
+10. [实时投注活动广播流程](#实时投注活动广播流程)
+11. [投注活动历史获取流程](#投注活动历史获取流程-已实现)
+12. [错误处理场景](#错误处理场景)
+13. [可证明公平验证](#可证明公平验证)
+14. [服务端种子轮换流程](#服务端种子轮换流程)
+15. [集成 API 流程](#集成-api-流程)
+16. [Game Aggregator Provider API 集成](#game-aggregator-provider-api-集成)
 
 ## 玩家认证流程
 
@@ -854,6 +855,142 @@ sequenceDiagram
 | 可证明公平 | SHA256 + 客户端种子 |
 | 赔率计算 | 基于选择数量、匹配数量和难度 |
 | 最高赔率 | 10000× (选10中10，Classic难度) |
+
+## Plinko 游戏余额延迟结算流程
+
+### 延迟结算完整流程（含异常处理）
+
+Plinko 游戏采用延迟结算机制，分为三个阶段：下注（PLACE_BET）、动画播放、结算（SETTLE_BET）。这种设计确保在动画播放期间，Invoker 前端和聚合器前端的余额始终保持一致。
+
+```mermaid
+sequenceDiagram
+    participant User as 用户
+    participant InvokerFE as Invoker 前端
+    participant InvokerBE as Invoker Server
+    participant DB as Invoker 数据库
+    participant AggBE as 聚合器后端
+    participant AggDB as 聚合器数据库
+    participant AggFE as 聚合器前端
+    participant Scheduler as 定时任务
+
+    Note over User,Scheduler: 用户下注 $10，当前余额 $100
+
+    %% ========== 阶段 1: PLACE_BET ==========
+    rect rgb(230, 240, 255)
+        Note over User,DB: 阶段 1: 下注和游戏结算（仅本地计算）
+
+        User->>InvokerFE: 点击下注
+        InvokerFE->>InvokerBE: PLACE_BET<br/>{amount: "10"}
+
+        alt 余额验证（可选）
+            InvokerBE->>AggBE: GetBalance API（验证余额）
+            AggBE-->>InvokerBE: balance: 100
+
+            alt 余额不足
+                InvokerBE-->>InvokerFE: ❌ 错误：余额不足
+                Note over InvokerFE: 流程结束
+            end
+        end
+
+        Note over InvokerBE: 1. 验证参数<br/>2. 获取 serverSeed<br/>3. 计算游戏结果
+        Note over InvokerBE: 结果: 赢得 $20
+
+        InvokerBE->>AggBE: 1️⃣ Play API<br/>{Bet: -10}
+        AggBE->>AggDB: UPDATE balance<br/>$100 → $90
+        AggDB-->>AggBE: 成功
+        AggBE-->>InvokerBE: balance: $90
+
+        InvokerBE->>DB: 2️⃣ INSERT GameResult<br/>{round_id: "R001",<br/>status: "pending"}
+        DB-->>InvokerBE: 保存成功
+
+        InvokerBE-->>InvokerFE: 3️⃣ PLACE_BET_RESPONSE<br/>{roundId: "R001", ...}
+
+        Note over InvokerFE: ⚠️ 余额已扣除<br/>但不更新显示
+    end
+
+    %% ========== 阶段 2: 动画播放 ==========
+    rect rgb(255, 245, 230)
+        Note over InvokerFE,AggFE: 阶段 2: 动画播放（余额保持一致）
+
+        Note over InvokerFE: 🎬 播放动画...
+
+        Note over AggFE,InvokerFE: ✅ 两个前端余额一致:<br/>聚合器: $100, Invoker: $100<br/>（Invoker 未更新显示）
+
+        Note over InvokerFE: 动画播放完成！
+    end
+
+    %% ========== 阶段 3: SETTLE_BET ==========
+    rect rgb(255, 240, 230)
+        Note over InvokerFE,AggFE: 阶段 3: 结算（同时更新）
+
+        alt 正常流程：前端发送 SETTLE_BET
+            InvokerFE->>InvokerBE: 4️⃣ SETTLE_BET {roundId: "R001"}
+
+            InvokerBE->>DB: SELECT status<br/>WHERE round_id = "R001"
+            DB-->>InvokerBE: status: pending
+
+            alt 状态为 pending（第一次结算）
+                InvokerBE->>AggBE: 5️⃣ Play API<br/>{Win: +20, End}
+
+                AggBE->>AggDB: UPDATE balance<br/>$90 → $110
+                AggDB-->>AggBE: 成功
+
+                par 并行：同时推送两个前端
+                    AggBE-->>InvokerBE: balance: $110
+                    InvokerBE->>DB: UPDATE status = "completed"
+                    InvokerBE-->>InvokerFE: 6️⃣ SETTLE_RESPONSE<br/>{balance: "110"}
+                    Note over InvokerFE: ✅ 显示 $110
+                and
+                    AggBE--)AggFE: WebSocket 推送<br/>{balance: 110}
+                    Note over AggFE: ✅ 显示 $110
+                end
+
+            else 状态为 completed（重复请求）
+                Note over InvokerBE: ⚠️ 已完成，查询聚合器
+                InvokerBE->>AggBE: GetBalance API
+                AggBE-->>InvokerBE: balance: 110
+                InvokerBE-->>InvokerFE: balance: 110
+            end
+
+        else 异常流程：前端崩溃未发送
+            Note over InvokerFE: 💥 前端崩溃/网络断开
+
+            Note over Scheduler: ⏰ 定时任务检测<br/>（20秒后）
+
+            Scheduler->>DB: SELECT * WHERE<br/>status = "pending" AND<br/>created_at < now() - 20s
+            DB-->>Scheduler: 返回 pending 游戏
+
+            Scheduler->>AggBE: 调用 Play API 结算<br/>{Win: +20, End}
+            AggBE-->>Scheduler: 返回余额
+
+            Scheduler->>DB: UPDATE status = "completed"
+
+            Note over Scheduler: ✅ 自动完成结算
+
+            opt 用户重连后
+                InvokerFE->>InvokerBE: 重连 WebSocket
+                Note over InvokerBE: BalanceSyncer<br/>自动同步余额
+                InvokerBE--)InvokerFE: BALANCE_UPDATE<br/>{balance: 110}
+            end
+        end
+    end
+
+    %% ========== 最终状态 ==========
+    rect rgb(230, 255, 230)
+        Note over AggFE,InvokerFE: ✅ 最终：余额同时更新！<br/>聚合器: $110, Invoker: $110
+    end
+```
+
+### 延迟结算关键特性
+
+| 特性 | 说明 |
+|------|------|
+| 分阶段结算 | PLACE_BET 只发送 Bet 扣款，SETTLE_BET 发送 Win+End |
+| 前端余额控制 | Invoker 前端在动画期间不更新余额显示，保持与聚合器一致 |
+| 幂等性保护 | 重复的 SETTLE_BET 请求查询聚合器余额返回 |
+| 异常兜底 | 定时任务每 20 秒扫描超时游戏，自动结算 |
+| 状态管理 | GameResult.Status: pending → completed |
+| 并行推送 | 结算时聚合器通过 WebSocket 同时推送两个前端 |
 
 ## 事件订阅流程
 

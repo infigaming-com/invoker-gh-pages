@@ -672,7 +672,135 @@ stateDiagram-v2
 }
 ```
 
+## 延迟结算机制（Plinko 专用）
 
+### 概述
+
+Plinko 游戏采用延迟结算机制，将下注和结算拆分为两个阶段，确保在动画播放期间 Invoker 前端和聚合器前端的余额保持一致。
+
+### 设计原则
+
+1. **余额一致性**：动画播放期间，两个前端显示相同的余额
+2. **分阶段结算**：PLACE_BET 只扣款，SETTLE_BET 完成赔付
+3. **异常兜底**：定时任务确保不会遗漏结算
+4. **幂等性保护**：防止重复结算
+
+### 三阶段流程
+
+| 阶段 | API 调用 | 聚合器操作 | 前端余额 | 游戏状态 |
+|------|----------|------------|----------|----------|
+| 1. 下注 | PLACE_BET | Bet（扣款） | 不更新显示 | pending |
+| 2. 动画 | - | - | 保持一致 | pending |
+| 3. 结算 | SETTLE_BET | Win + End（赔付） | 同时更新 | completed |
+
+#### 阶段详解
+
+**阶段 1：下注（PLACE_BET）**
+- 调用聚合器发送 Bet 扣款请求
+- 本地计算游戏结果（路径、倍率、赔付）
+- 保存游戏结果，状态为 `pending`
+- 返回游戏结果，但**不返回余额**
+- 前端**不更新余额显示**，保持与聚合器前端一致
+
+**阶段 2：动画播放**
+- 前端播放小球下落动画（约 2-5 秒）
+- Invoker 前端和聚合器前端余额都显示扣款后的金额
+- 两个前端保持一致，用户体验流畅
+- 服务端无操作，游戏状态保持 `pending`
+
+**阶段 3：结算（SETTLE_BET）**
+- 动画完成后，前端发送 SETTLE_BET 请求
+- 调用聚合器发送 Win（如果赢）+ End 请求
+- 更新游戏状态为 `completed`
+- 聚合器通过 WebSocket 同时推送余额到两个前端
+- 两个前端同时更新余额显示
+
+### 状态管理
+
+```go
+// GameResult.Status 字段
+const (
+    GameResultStatusPending   = "pending"   // 待结算
+    GameResultStatusCompleted = "completed" // 已完成
+)
+```
+
+**状态流转**：
+```
+pending（PLACE_BET 时）→ completed（SETTLE_BET 或定时任务后）
+```
+
+### 定时任务（PendingGameSettler）
+
+**职责**：
+- 扫描超时的 pending 游戏（超过 20 秒）
+- 自动调用聚合器 API 完成结算
+- 更新游戏状态为 completed
+- 发布投注活动广播
+
+**配置**：
+```go
+const (
+    settlementTimeoutSeconds = 20   // 超时阈值
+    batchSize                = 100  // 批量处理数量
+    tickerInterval           = 20 * time.Second  // 扫描间隔
+)
+```
+
+**实现文件**：`internal/service/scheduler/pending_game_settler.go`
+
+**启动位置**：`cmd/server/main.go`
+```go
+func newApp(..., settler *scheduler.PendingGameSettler) *kratos.App {
+    if err := settler.Start(context.Background()); err != nil {
+        log.Fatalf("Failed to start pending game settler: %v", err)
+    }
+    // ...
+}
+```
+
+### Handler 接口
+
+```go
+type IGameHandler interface {
+    // ...
+    NeedsDelayedSettlement() bool  // 返回 true 表示需要延迟结算
+}
+```
+
+**当前支持延迟结算的游戏**：
+- Plinko（`plinko.Handler.NeedsDelayedSettlement() = true`）
+
+**其他游戏默认返回 false**：
+- Dice、Keno、Limbo、DragonTiger、Roulette 等
+
+### 安全性
+
+1. **幂等性**：检查游戏状态，避免重复结算
+2. **事务性**：状态更新使用数据库事务
+3. **错误处理**：定时任务失败会记录日志并跳过，不影响其他游戏
+4. **并发安全**：使用数据库锁防止并发结算
+
+### 监控指标
+
+建议监控以下指标：
+- pending 状态游戏的平均停留时间
+- 定时任务结算的游戏数量
+- 结算失败率
+- 前端 SETTLE_BET 调用比例
+
+### 未来扩展
+
+延迟结算机制设计为通用架构，其他有动画需求的游戏也可以使用：
+1. 实现 `NeedsDelayedSettlement() bool` 返回 true
+2. PLACE_BET 保存 pending 状态
+3. 动画完成后调用 SETTLE_BET
+
+### 相关文档
+
+- [Plinko 详细设计](./plinko-detailed-design-zh.md#延迟结算机制) - Plinko 专用说明
+- [Plinko WebSocket API](./plinko-websocket-api-zh.md#2-settle_bet---plinko-结算) - SETTLE_BET 接口文档
+- [序列图](./sequence-diagrams-zh.md) - 延迟结算流程图
 
 ## 游戏详细设计文档
 
