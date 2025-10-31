@@ -102,6 +102,57 @@ func generateMinePositions(clientSeed, serverSeed string, nonce int64, minesCoun
 - **SHA256哈希**：加密哈希函数保证不可预测性
 - **验证接口**：提供独立验证函数供玩家验证
 
+### 验证 API 接口
+
+系统提供 RESTful API 用于独立验证游戏结果：
+
+**端点**: `POST /v1/fairness/mines/verify`
+
+**特点**：
+- 公开接口，无需认证
+- 使用与游戏相同的算法
+- 支持所有网格类型和地雷配置
+- 返回确定性结果供对比验证
+
+**参数验证规则**：
+```go
+func validateMinesRequest(req *pb.VerifyMinesResultRequest) error {
+    // 客户端种子和服务器种子不能为空
+    if req.ClientSeed == "" || req.ServerSeed == "" {
+        return errors.BadRequest("INVALID_SEED", "种子不能为空")
+    }
+
+    // Nonce 必须 >= 0
+    if req.Nonce < 0 {
+        return errors.BadRequest("INVALID_NONCE", "Nonce值必须大于等于0")
+    }
+
+    // 网格类型必须有效
+    gridConfig, exists := GridConfigs[req.GridType]
+    if !exists {
+        return errors.BadRequest("INVALID_GRID_TYPE", "无效的网格类型")
+    }
+
+    // 地雷数量必须在有效范围内
+    if req.MinesCount <= 0 || req.MinesCount >= gridConfig.MaxMines {
+        return errors.BadRequest("INVALID_MINES_COUNT", "地雷数量无效")
+    }
+
+    return nil
+}
+```
+
+**使用场景**：
+- 玩家验证游戏结果公平性
+- 第三方审计机构独立验证
+- 开发者测试和调试
+- 前端实现客户端验证功能
+
+**与 WebSocket 接口的关系**：
+- WebSocket 接口：游戏进行时使用，结果中包含哈希后的服务器种子
+- 验证 API：游戏结束后使用，需要揭示的服务器种子
+- 两者使用相同的 `CalculateMinePositions()` 函数确保一致性
+
 ## 系统实现细节
 
 ### 1. 服务架构

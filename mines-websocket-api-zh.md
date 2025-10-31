@@ -382,7 +382,112 @@ Mines 是一款经典的扫雷游戏，玩家在网格中揭开安全格子，�
 5. **RoundID格式**：使用纯数字格式，由 Sony Flake ID 生成器生成
 6. **断线恢复**：支持通过 MINES_RESUME_GAME 恢复游戏
 
-## 10. 相关文档
+## 10. 公平性验证 API
+
+除了 WebSocket 接口外，系统还提供 RESTful API 用于独立验证游戏结果的公平性。
+
+### 10.1 验证接口
+
+**端点**: `POST /v1/fairness/mines/verify`
+
+**认证**: 无需认证（公开接口）
+
+**请求参数**:
+
+```json
+{
+  "clientSeed": "player_seed_123",
+  "serverSeed": "revealed_server_seed",
+  "nonce": 1,
+  "minesCount": 5,
+  "gridType": "5x5"
+}
+```
+
+| 参数 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `clientSeed` | string | 是 | 客户端种子（游戏时提供的） |
+| `serverSeed` | string | 是 | 服务器种子（游戏结束后揭示的） |
+| `nonce` | number | 是 | Nonce 值（≥0） |
+| `minesCount` | number | 是 | 地雷数量 |
+| `gridType` | string | 是 | 网格类型："3x3"、"5x5"、"7x7" |
+
+**响应结果**:
+
+```json
+{
+  "minePositions": [3, 7, 15, 18, 22]
+}
+```
+
+### 10.2 验证步骤
+
+1. **获取游戏数据**：
+   - 从游戏结果中获取 `provablyFair` 信息
+   - 记录自己提供的 `clientSeed`
+
+2. **调用验证接口**：
+   ```bash
+   curl -X POST https://dev.hicasino.xyz/v1/fairness/mines/verify \
+     -H "Content-Type: application/json" \
+     -d '{
+       "clientSeed": "your_client_seed",
+       "serverSeed": "revealed_server_seed",
+       "nonce": 1,
+       "minesCount": 5,
+       "gridType": "5x5"
+     }'
+   ```
+
+3. **对比结果**：
+   - 验证返回的地雷位置与游戏结果中的地雷位置是否一致
+   - 如果一致，证明游戏结果公平
+
+### 10.3 JavaScript 验证示例
+
+```javascript
+async function verifyMinesResult(gameResult) {
+  const response = await fetch('https://dev.hicasino.xyz/v1/fairness/mines/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      clientSeed: gameResult.provablyFair.clientSeed,
+      serverSeed: gameResult.provablyFair.serverSeed,
+      nonce: gameResult.provablyFair.nonce,
+      minesCount: gameResult.minesCount,
+      gridType: gameResult.gridType
+    })
+  });
+
+  const verification = await response.json();
+
+  // 对比地雷位置
+  const isValid = JSON.stringify(verification.minePositions.sort()) ===
+                  JSON.stringify(gameResult.minePositions.sort());
+
+  console.log('验证结果:', isValid ? '✅ 公平' : '❌ 不匹配');
+  return isValid;
+}
+```
+
+### 10.4 验证原理
+
+验证接口使用与游戏相同的算法生成地雷位置：
+
+```
+对于每个地雷 i（i = 0 到 minesCount-1）：
+  1. 组合种子：seedStr = "serverSeed:clientSeed:nonce:i"
+  2. 计算哈希：hash = SHA256(seedStr)
+  3. 转换为位置：position = hash 的前 8 位 % gridSize
+  4. 处理碰撞：如果位置已占用，线性探测到下一个空位
+```
+
+这确保了：
+- **确定性**：相同的种子组合总是产生相同的结果
+- **不可预测性**：在服务器种子揭示前无法预测结果
+- **可验证性**：任何人都可以独立验证结果
+
+## 11. 相关文档
 
 - [WebSocket 通用接口](./common-websocket-api-zh.md)
 - [Mines 游戏详细设计](./mines-detailed-design-zh.md)
