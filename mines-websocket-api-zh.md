@@ -390,7 +390,7 @@ Mines 是一款经典的扫雷游戏，玩家在网格中揭开安全格子，�
 
 **端点**: `POST /v1/fairness/mines/verify`
 
-**认证**: 无需认证（公开接口）
+**认证**: 需要 JWT Token
 
 **请求参数**:
 
@@ -430,6 +430,7 @@ Mines 是一款经典的扫雷游戏，玩家在网格中揭开安全格子，�
    ```bash
    curl -X POST https://dev.hicasino.xyz/v1/fairness/mines/verify \
      -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
      -d '{
        "clientSeed": "your_client_seed",
        "serverSeed": "revealed_server_seed",
@@ -446,10 +447,13 @@ Mines 是一款经典的扫雷游戏，玩家在网格中揭开安全格子，�
 ### 10.3 JavaScript 验证示例
 
 ```javascript
-async function verifyMinesResult(gameResult) {
+async function verifyMinesResult(gameResult, jwtToken) {
   const response = await fetch('https://dev.hicasino.xyz/v1/fairness/mines/verify', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${jwtToken}`
+    },
     body: JSON.stringify({
       clientSeed: gameResult.provablyFair.clientSeed,
       serverSeed: gameResult.provablyFair.serverSeed,

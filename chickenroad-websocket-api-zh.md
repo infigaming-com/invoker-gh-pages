@@ -474,7 +474,137 @@ Chicken Road 是一款 Crash 类游戏，玩家控制小鸡过马路，每走一
 2. **策略辅助**：帮助玩家制定前进策略
 3. **数据一致性**：确保前后端倍率计算完全一致
 
-## 11. 相关文档
+## 11. 公平性验证 API
+
+除了 WebSocket 接口外，系统还提供 RESTful API 用于独立验证游戏结果的公平性。
+
+### 11.1 验证接口
+
+**端点**: `POST /v1/fairness/chickenroad/verify`
+
+**认证**: 需要 JWT Token
+
+**请求参数**:
+
+```json
+{
+  "difficulty": "medium",
+  "clientSeed": "player_seed_123",
+  "serverSeed": "revealed_server_seed",
+  "nonce": 1
+}
+```
+
+| 参数 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `difficulty` | string | 是 | 难度等级："easy"、"medium"、"hard"、"expert" |
+| `clientSeed` | string | 是 | 客户端种子（游戏时提供的） |
+| `serverSeed` | string | 是 | 服务器种子（游戏结束后揭示的） |
+| `nonce` | number | 是 | Nonce 值（≥0） |
+
+**响应结果**:
+
+```json
+{
+  "stepResults": [true, true, false, true, true, false],
+  "multipliers": [1.15, 1.37, 1.64, 1.95, 2.32, 2.77]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `stepResults` | boolean[] | 每步的结果（true=成功，false=失败） |
+| `multipliers` | number[] | 每步对应的倍率 |
+
+### 11.2 验证步骤
+
+1. **获取游戏数据**：
+   - 从游戏结果中获取 `provablyFair` 信息
+   - 记录自己提供的 `clientSeed`
+   - 记录游戏的 `difficulty`
+
+2. **调用验证接口**：
+   ```bash
+   curl -X POST https://dev.hicasino.xyz/v1/fairness/chickenroad/verify \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -d '{
+       "difficulty": "medium",
+       "clientSeed": "your_client_seed",
+       "serverSeed": "revealed_server_seed",
+       "nonce": 1
+     }'
+   ```
+
+3. **对比结果**：
+   - 验证返回的 `stepResults` 与游戏实际步骤结果是否一致
+   - 验证返回的 `multipliers` 与游戏中的倍率是否一致
+   - 如果全部一致，证明游戏结果公平
+
+### 11.3 JavaScript 验证示例
+
+```javascript
+async function verifyChickenRoadResult(gameResult, jwtToken) {
+  const response = await fetch('https://dev.hicasino.xyz/v1/fairness/chickenroad/verify', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${jwtToken}`
+    },
+    body: JSON.stringify({
+      difficulty: gameResult.difficulty,
+      clientSeed: gameResult.provablyFair.clientSeed,
+      serverSeed: gameResult.provablyFair.serverSeed,
+      nonce: gameResult.provablyFair.nonce
+    })
+  });
+
+  const verification = await response.json();
+
+  // 对比步骤结果
+  const stepsMatch = verification.stepResults.every((result, index) =>
+    result === gameResult.stepResults[index]
+  );
+
+  // 对比倍率（允许小的浮点误差）
+  const multipliersMatch = verification.multipliers.every((mult, index) =>
+    Math.abs(mult - gameResult.multipliers[index]) < 0.01
+  );
+
+  const isValid = stepsMatch && multipliersMatch;
+  console.log('验证结果:', isValid ? '✅ 公平' : '❌ 不匹配');
+  return isValid;
+}
+```
+
+### 11.4 验证原理
+
+验证接口使用与游戏相同的算法生成每步的结果：
+
+```
+对于每一步 i（i = 0 到 maxSteps-1）：
+  1. 组合种子：seedStr = "serverSeed:clientSeed:nonce:i"
+  2. 计算哈希：hash = SHA256(seedStr)
+  3. 转换为随机数：将哈希的前 8 位十六进制转换为浮点数（0-1）
+  4. 判断结果：
+     - randomValue = hashDecimal / (2^32 - 1)
+     - survivalRate = 难度配置中的存活率
+     - stepResult = randomValue < survivalRate ? true : false
+  5. 计算倍率：根据步数和难度从配置表中获取对应倍率
+```
+
+**难度配置存活率**：
+- Easy: 67% (maxSteps=24)
+- Medium: 63% (maxSteps=22)
+- Hard: 60% (maxSteps=20)
+- Expert: 54% (maxSteps=15)
+
+这确保了：
+- **确定性**：相同的种子组合总是产生相同的结果
+- **不可预测性**：在服务器种子揭示前无法预测结果
+- **可验证性**：任何人都可以独立验证结果
+
+## 12. 相关文档
 
 - [WebSocket 通用接口](./common-websocket-api-zh.md)
 - [Chicken Road 游戏详细设计](./chickenroad-detailed-design-zh.md)

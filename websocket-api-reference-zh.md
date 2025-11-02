@@ -93,8 +93,18 @@ Invoker Server 的 WebSocket API 文档已按游戏类型拆分为多个独立�
   - 参数：clientSeed, serverSeed, nonce, minesCount, gridType
   - 返回：minePositions（地雷位置数组）
 
+- **ChickenRoad 验证**: `POST /v1/fairness/chickenroad/verify`
+  - 验证 Chicken Road 游戏的每步结果
+  - 参数：difficulty, clientSeed, serverSeed, nonce
+  - 返回：stepResults（每步成功/失败的布尔数组）、multipliers（每步倍率）
+
+- **Plinko 验证**: `POST /v1/fairness/plinko/verify`
+  - 验证 Plinko 游戏的落球路径和槽位
+  - 参数：rows, difficulty, clientSeed, serverSeed, nonce
+  - 返回：path（落球路径数组）、finalSlot（最终槽位）、multiplier（倍率）
+
 **特点**：
-- 公开接口，无需认证
+- 需要 JWT Token 认证
 - 使用与游戏相同的算法
 - 支持第三方独立验证
 - 详细使用说明请参考各游戏的 API 文档

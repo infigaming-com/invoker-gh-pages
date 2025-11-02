@@ -171,7 +171,122 @@ Dice 是一款经典的骰子游戏，玩家预测骰子的点数是否会大于
 4. **精度处理**：所有金额使用字符串格式，保留8位小数
 5. **RoundID格式**：使用纯数字格式，由 Sony Flake ID 生成器生成
 
-## 6. 相关文档
+## 6. 公平性验证 API
+
+除了 WebSocket 接口外，系统还提供 RESTful API 用于独立验证游戏结果的公平性。
+
+### 6.1 验证接口
+
+**端点**: `POST /v1/fairness/dice/verify`
+
+**认证**: 需要 JWT Token
+
+**请求参数**:
+
+```json
+{
+  "clientSeed": "player_seed_123",
+  "serverSeed": "revealed_server_seed",
+  "nonce": 1
+}
+```
+
+| 参数 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `clientSeed` | string | 是 | 客户端种子（游戏时提供的） |
+| `serverSeed` | string | 是 | 服务器种子（游戏结束后揭示的） |
+| `nonce` | number | 是 | Nonce 值（≥0） |
+
+**响应结果**:
+
+```json
+{
+  "roll": 53.42857142
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `roll` | number | 骰子掷出的值（0-100） |
+
+### 6.2 验证步骤
+
+1. **获取游戏数据**：
+   - 从游戏结果中获取 `provablyFair` 信息
+   - 记录自己提供的 `clientSeed`
+
+2. **调用验证接口**：
+   ```bash
+   curl -X POST https://dev.hicasino.xyz/v1/fairness/dice/verify \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -d '{
+       "clientSeed": "your_client_seed",
+       "serverSeed": "revealed_server_seed",
+       "nonce": 1
+     }'
+   ```
+
+3. **对比结果**：
+   - 验证返回的 `roll` 值与游戏结果中的掷骰值是否一致
+   - 如果一致，证明游戏结果公平
+
+### 6.3 JavaScript 验证示例
+
+```javascript
+async function verifyDiceResult(gameResult, jwtToken) {
+  const response = await fetch('https://dev.hicasino.xyz/v1/fairness/dice/verify', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${jwtToken}`
+    },
+    body: JSON.stringify({
+      clientSeed: gameResult.provablyFair.clientSeed,
+      serverSeed: gameResult.provablyFair.serverSeed,
+      nonce: gameResult.provablyFair.nonce
+    })
+  });
+
+  const verification = await response.json();
+
+  // 对比掷骰值（允许小的浮点误差）
+  const isValid = Math.abs(verification.roll - gameResult.roll) < 0.00001;
+
+  console.log('验证结果:', isValid ? '✅ 公平' : '❌ 不匹配');
+  console.log(`游戏结果: ${gameResult.roll}, 验证结果: ${verification.roll}`);
+  return isValid;
+}
+```
+
+### 6.4 验证原理
+
+验证接口使用与游戏相同的算法生成骰子值：
+
+```
+1. 组合种子：seedStr = "serverSeed:clientSeed:nonce"
+2. 计算哈希：hash = SHA256(seedStr)
+3. 提取前8位十六进制：hashFirst8 = hash[0:8]
+4. 转换为十进制：hashDecimal = parseInt(hashFirst8, 16)
+5. 归一化到0-100：roll = (hashDecimal / 0xFFFFFFFF) * 100
+```
+
+**示例计算**:
+```
+seedStr = "server123:client456:1"
+hash = SHA256(seedStr) = "8a3f2b1c..."
+hashFirst8 = "8a3f2b1c"
+hashDecimal = 2318840604
+roll = (2318840604 / 4294967295) * 100 = 53.98642...
+```
+
+这确保了：
+- **确定性**：相同的种子组合总是产生相同的结果
+- **不可预测性**：在服务器种子揭示前无法预测结果
+- **可验证性**：任何人都可以独立验证结果
+- **均匀分布**：骰子值在 0-100 范围内均匀分布
+
+## 7. 相关文档
 
 - [WebSocket 通用接口](./common-websocket-api-zh.md)
 - [Dice 游戏详细设计](./dice-detailed-design-zh.md)

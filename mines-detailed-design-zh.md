@@ -109,7 +109,7 @@ func generateMinePositions(clientSeed, serverSeed string, nonce int64, minesCoun
 **端点**: `POST /v1/fairness/mines/verify`
 
 **特点**：
-- 公开接口，无需认证
+- 需要 JWT Token 认证
 - 使用与游戏相同的算法
 - 支持所有网格类型和地雷配置
 - 返回确定性结果供对比验证

@@ -133,6 +133,36 @@ func calculateStepProbability(step int, difficulty string) float64 {
 3. 重新计算哈希值和概率
 4. 对比实际游戏结果
 
+### 验证 API 接口
+
+系统提供专门的验证接口供玩家独立验证游戏结果：
+
+**端点**: `POST /v1/fairness/chickenroad/verify`
+
+**功能**: 使用与游戏相同的算法重新计算所有步骤结果
+
+**请求参数**:
+- `difficulty`: 难度等级（easy/medium/hard/expert）
+- `clientSeed`: 客户端种子
+- `serverSeed`: 服务器种子（游戏结束后公开）
+- `nonce`: Nonce 值
+
+**响应结果**:
+- `stepResults[]`: 每步成功/失败的布尔数组
+- `multipliers[]`: 每步对应的倍率
+
+**验证原理**:
+```
+对于每一步 i（i = 0 到 maxSteps-1）：
+  1. 组合种子：seedStr = "serverSeed:clientSeed:nonce:i"
+  2. 计算哈希：hash = SHA256(seedStr)
+  3. 转换为随机数：randomValue = hashDecimal / (2^32 - 1)
+  4. 判断结果：stepResult = randomValue < survivalRate
+  5. 计算倍率：从配置表中获取对应步数的倍率
+```
+
+详细使用说明请参考：[ChickenRoad WebSocket API 文档](./chickenroad-websocket-api-zh.md#11-公平性验证-api)
+
 ## 系统实现细节
 
 ### 1. 服务架构

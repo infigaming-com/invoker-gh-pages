@@ -239,7 +239,157 @@ updateBalance(settleBetResponse.balance);
 6. **动画建议**：客户端应实现球的下落动画以增强游戏体验
 7. **RoundID格式**：使用纯数字格式，由 Sony Flake ID 生成器生成
 
-## 7. 相关文档
+## 7. 公平性验证 API
+
+除了 WebSocket 接口外，系统还提供 RESTful API 用于独立验证游戏结果的公平性。
+
+### 7.1 验证接口
+
+**端点**: `POST /v1/fairness/plinko/verify`
+
+**认证**: 需要 JWT Token
+
+**请求参数**:
+
+```json
+{
+  "rows": 12,
+  "difficulty": "medium",
+  "clientSeed": "player_seed_123",
+  "serverSeed": "revealed_server_seed",
+  "nonce": 1
+}
+```
+
+| 参数 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `rows` | number | 是 | 行数（8-16） |
+| `difficulty` | string | 是 | 难度等级："low"、"medium"、"high" |
+| `clientSeed` | string | 是 | 客户端种子（游戏时提供的） |
+| `serverSeed` | string | 是 | 服务器种子（游戏结束后揭示的） |
+| `nonce` | number | 是 | Nonce 值（≥0） |
+
+**响应结果**:
+
+```json
+{
+  "path": [0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1],
+  "finalSlot": 7,
+  "multiplier": 5.6
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `path` | number[] | 落球路径（0=左，1=右） |
+| `finalSlot` | number | 最终槽位（0 到 rows） |
+| `multiplier` | number | 倍率 |
+
+### 7.2 验证步骤
+
+1. **获取游戏数据**：
+   - 从游戏结果中获取 `provablyFair` 信息
+   - 记录自己提供的 `clientSeed`
+   - 记录游戏的 `rows` 和 `difficulty`
+
+2. **调用验证接口**：
+   ```bash
+   curl -X POST https://dev.hicasino.xyz/v1/fairness/plinko/verify \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -d '{
+       "rows": 12,
+       "difficulty": "medium",
+       "clientSeed": "your_client_seed",
+       "serverSeed": "revealed_server_seed",
+       "nonce": 1
+     }'
+   ```
+
+3. **对比结果**：
+   - 验证返回的 `path` 与游戏实际路径是否一致
+   - 验证返回的 `finalSlot` 与最终槽位是否一致
+   - 验证返回的 `multiplier` 与倍率是否一致
+   - 如果全部一致，证明游戏结果公平
+
+### 7.3 JavaScript 验证示例
+
+```javascript
+async function verifyPlinkoResult(gameResult, jwtToken) {
+  const response = await fetch('https://dev.hicasino.xyz/v1/fairness/plinko/verify', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${jwtToken}`
+    },
+    body: JSON.stringify({
+      rows: gameResult.rows,
+      difficulty: gameResult.difficulty,
+      clientSeed: gameResult.provablyFair.clientSeed,
+      serverSeed: gameResult.provablyFair.serverSeed,
+      nonce: gameResult.provablyFair.nonce
+    })
+  });
+
+  const verification = await response.json();
+
+  // 对比路径
+  const pathMatch = verification.path.every((dir, index) =>
+    dir === gameResult.path[index]
+  );
+
+  // 对比最终槽位
+  const slotMatch = verification.finalSlot === gameResult.finalSlot;
+
+  // 对比倍率（允许小的浮点误差）
+  const multiplierMatch = Math.abs(verification.multiplier - gameResult.multiplier) < 0.01;
+
+  const isValid = pathMatch && slotMatch && multiplierMatch;
+  console.log('验证结果:', isValid ? '✅ 公平' : '❌ 不匹配');
+  return isValid;
+}
+```
+
+### 7.4 验证原理
+
+验证接口使用与游戏相同的算法生成落球路径：
+
+```
+使用 HMAC-SHA256 算法：
+  1. 组合种子：seedStr = "serverSeed:clientSeed:nonce"
+  2. 计算哈希：hash = HMAC-SHA256(key=serverSeed, message=seedStr)
+  3. 按位提取路径：
+     对于第 i 行（i = 0 到 rows-1）：
+       byteIndex = i / 8
+       bitIndex = i % 8
+       bit = (hash[byteIndex] >> bitIndex) & 1
+       path[i] = bit  // 0=左，1=右
+  4. 计算最终槽位：
+     finalSlot = path 中所有 1 的数量
+  5. 查询倍率：
+     multiplier = MultiplierConfig[difficulty][rows][finalSlot]
+```
+
+**哈希扩展**（当行数 > 256 时）：
+```
+extSeedStr = "seedStr:ext:extension_index"
+重新计算 HMAC-SHA256 获得更多随机位
+```
+
+**路径示例**（12 行）：
+```
+path = [0,1,1,0,1,0,1,1,0,1,0,1]
+       ← → → ← → ← → → ← → ← →
+finalSlot = 7 (有 7 个 1)
+```
+
+这确保了：
+- **确定性**：相同的种子组合总是产生相同的路径
+- **不可预测性**：在服务器种子揭示前无法预测结果
+- **可验证性**：任何人都可以独立验证结果
+- **均匀分布**：每个方向有 50% 的概率，符合二项分布
+
+## 8. 相关文档
 
 - [WebSocket 通用接口](./common-websocket-api-zh.md)
 - [Plinko 游戏详细设计](./plinko-detailed-design-zh.md)

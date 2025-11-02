@@ -139,17 +139,17 @@ func VerifyPlinkoFairness(
     if !verifyServerSeedHash(serverSeed, serverSeedHash) {
         return nil, ErrInvalidServerSeed
     }
-    
+
     // 2. 重新计算路径
     path := CalculatePath(clientSeed, serverSeed, nonce, rows)
-    
+
     // 3. 计算最终位置和倍率
     finalSlot := sum(path)
     multiplier := getMultiplier(rows, difficulty, finalSlot)
-    
+
     // 4. 计算理论概率
     probability := calculateProbability(rows, finalSlot)
-    
+
     return &VerificationResult{
         Path:        path,
         FinalSlot:   finalSlot,
@@ -158,6 +158,43 @@ func VerifyPlinkoFairness(
     }, nil
 }
 ```
+
+### 验证 API 接口
+
+系统提供专门的验证接口供玩家独立验证游戏结果：
+
+**端点**: `POST /v1/fairness/plinko/verify`
+
+**功能**: 使用与游戏相同的算法重新计算落球路径和结果
+
+**请求参数**:
+- `rows`: 行数（8-16）
+- `difficulty`: 难度等级（low/medium/high）
+- `clientSeed`: 客户端种子
+- `serverSeed`: 服务器种子（游戏结束后公开）
+- `nonce`: Nonce 值
+
+**响应结果**:
+- `path[]`: 落球路径（0=左，1=右）
+- `finalSlot`: 最终槽位（0 到 rows）
+- `multiplier`: 倍率
+
+**验证原理**:
+```
+使用 HMAC-SHA256 算法：
+  1. 组合种子：seedStr = "serverSeed:clientSeed:nonce"
+  2. 计算哈希：hash = HMAC-SHA256(key=serverSeed, message=seedStr)
+  3. 按位提取路径：
+     对于第 i 行（i = 0 到 rows-1）：
+       byteIndex = i / 8
+       bitIndex = i % 8
+       bit = (hash[byteIndex] >> bitIndex) & 1
+       path[i] = bit  // 0=左，1=右
+  4. 计算最终槽位：finalSlot = path 中所有 1 的数量
+  5. 查询倍率：从配置表中获取 multiplier[difficulty][rows][finalSlot]
+```
+
+详细使用说明请参考：[Plinko WebSocket API 文档](./plinko-websocket-api-zh.md#7-公平性验证-api)
 
 ## 延迟结算机制
 
