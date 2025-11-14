@@ -48,30 +48,42 @@ Mines 是一款经典的扫雷游戏，玩家在网格中揭开安全格子，�
 ```json
 {
   "i": "msg_009",
-  "t": "PLACE_BET",
+  "t": "PLACE_BET_RESPONSE",
   "p": {
     "roundId": "123456789012345678",
-    "gameResult": {
-      "gameId": "inhousegame:mines",
-      "betAmount": "10.00",
-      "winAmount": "0",
-      "isWin": false,
-      "minesOutcome": {
-        "roundId": "123456789012345678",
-        "status": "in_progress",
-        "minesCount": 5,
-        "gridType": "5x5",
-        "revealedTiles": [],
-        "safeTilesRevealed": 0,
-        "currentMultiplier": "1.00",
-        "nextMultiplier": "1.04"
-      },
-      "timestamp": 1704067200000
-    },
-    "balance": "990.00"
+    "balance": "990.00000000",
+    "gameState": {
+      "@type": "type.googleapis.com/api.game.v1.MinesGameState",
+      "roundId": "123456789012345678",
+      "status": "playing",
+      "betAmount": "10.00000000",
+      "minesCount": 5,
+      "gridType": "5x5",
+      "revealedTiles": [],
+      "safeTilesRevealed": 0
+    }
   }
 }
 ```
+
+**字段说明**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `roundId` | string | 游戏回合ID |
+| `balance` | string | 投注后的玩家余额（小数点后8位） |
+| `gameState` | MinesGameState | 游戏状态对象 |
+| `gameState.roundId` | string | 游戏回合ID |
+| `gameState.status` | string | 游戏状态："playing"（进行中） |
+| `gameState.betAmount` | string | 投注金额 |
+| `gameState.minesCount` | number | 地雷数量 |
+| `gameState.gridType` | string | 网格类型 |
+| `gameState.revealedTiles` | number[] | 已揭示的格子索引（初始为空） |
+| `gameState.safeTilesRevealed` | number | 已揭示的安全格子数量（初始为0） |
+
+**注意**：
+- 投注时不返回 `gameResult`，只有在游戏结束时（踩到地雷或提现）才返回
+- `balance` 是从聚合器实时返回的最新余额，无需额外查询
 
 ## 2. MINES_REVEAL_TILE - 揭开格子
 
@@ -100,14 +112,12 @@ Mines 是一款经典的扫雷游戏，玩家在网格中揭开安全格子，�
     "isMine": false,
     "gameState": {
       "roundId": "123456789012345678",
-      "status": "in_progress",
+      "status": "playing",
       "betAmount": "10.00",
       "minesCount": 5,
       "gridType": "5x5",
       "revealedTiles": [12],
-      "safeTilesRevealed": 1,
-      "createdAt": 1704067200000,
-      "updatedAt": 1704067210000
+      "safeTilesRevealed": 1
     },
     "currentMultiplier": "1.04",
     "nextMultiplier": "1.09"
@@ -125,14 +135,12 @@ Mines 是一款经典的扫雷游戏，玩家在网格中揭开安全格子，�
     "isMine": true,
     "gameState": {
       "roundId": "123456789012345678",
-      "status": "lost",
+      "status": "finished",
       "betAmount": "10.00",
       "minesCount": 5,
       "gridType": "5x5",
       "revealedTiles": [12, 15],
-      "safeTilesRevealed": 1,
-      "createdAt": 1704067200000,
-      "updatedAt": 1704067220000
+      "safeTilesRevealed": 1
     },
     "result": {
       "minePositions": [3, 7, 15, 18, 22],
@@ -175,14 +183,12 @@ Mines 是一款经典的扫雷游戏，玩家在网格中揭开安全格子，�
     "payout": "15.60",
     "gameState": {
       "roundId": "123456789012345678",
-      "status": "cashed_out",
+      "status": "finished",
       "betAmount": "10.00",
       "minesCount": 5,
       "gridType": "5x5",
       "revealedTiles": [12, 8, 20],
-      "safeTilesRevealed": 3,
-      "createdAt": 1704067200000,
-      "updatedAt": 1704067230000
+      "safeTilesRevealed": 3
     },
     "result": {
       "minePositions": [3, 7, 15, 18, 22],
@@ -225,14 +231,12 @@ Mines 是一款经典的扫雷游戏，玩家在网格中揭开安全格子，�
   "p": {
     "gameState": {
       "roundId": "123456789012345678",
-      "status": "in_progress",
+      "status": "playing",
       "betAmount": "10.00",
       "minesCount": 5,
       "gridType": "5x5",
       "revealedTiles": [12, 8],
-      "safeTilesRevealed": 2,
-      "createdAt": 1704067200000,
-      "updatedAt": 1704067215000
+      "safeTilesRevealed": 2
     },
     "currentMultiplier": "1.09",
     "nextMultiplier": "1.14"
@@ -265,14 +269,12 @@ Mines 是一款经典的扫雷游戏，玩家在网格中揭开安全格子，�
     "roundId": "123456789012345678",
     "gameState": {
       "roundId": "123456789012345678",
-      "status": "in_progress",
+      "status": "playing",
       "betAmount": "10.00",
       "minesCount": 5,
       "gridType": "5x5",
       "revealedTiles": [12],
-      "safeTilesRevealed": 1,
-      "createdAt": 1704067200000,
-      "updatedAt": 1704067210000
+      "safeTilesRevealed": 1
     }
   }
 }
@@ -316,14 +318,12 @@ Mines 是一款经典的扫雷游戏，玩家在网格中揭开安全格子，�
     "success": true,
     "gameState": {
       "roundId": "123456789012345678",
-      "status": "in_progress",
+      "status": "playing",
       "betAmount": "10.00",
       "minesCount": 5,
       "gridType": "5x5",
       "revealedTiles": [12, 8],
-      "safeTilesRevealed": 2,
-      "createdAt": 1704067200000,
-      "updatedAt": 1704067215000
+      "safeTilesRevealed": 2
     },
     "currentMultiplier": "1.09",
     "nextMultiplier": "1.14"
@@ -356,10 +356,8 @@ Mines 是一款经典的扫雷游戏，玩家在网格中揭开安全格子，�
 
 ### 游戏状态
 
-- `in_progress`: 游戏进行中
-- `cashed_out`: 已提现
-- `lost`: 触雷失败
-- `auto_cashed_out`: 自动提现（5分钟超时）
+- `playing`: 游戏进行中
+- `finished`: 游戏已结束（包括提现、触雷等所有结束情况）
 
 ## 8. 错误码
 

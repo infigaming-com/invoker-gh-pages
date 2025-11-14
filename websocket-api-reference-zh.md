@@ -103,6 +103,12 @@ Invoker Server 的 WebSocket API 文档已按游戏类型拆分为多个独立�
   - 参数：rows, difficulty, clientSeed, serverSeed, nonce
   - 返回：path（落球路径数组）、finalSlot（最终槽位）、multiplier（倍率）
 
+- **Keno 验证**: `POST /v1/fairness/keno/verify`
+  - 验证 Keno 游戏的抽奖结果
+  - 参数：clientSeed, serverSeed, nonce, selectedNumbers（玩家选择的数字，1-10个，范围1-40）, difficulty（难度模式：low/classic/medium/high）
+  - 返回：drawnNumbers（系统抽取的10个数字）、matchedNumbers（匹配的数字列表）、matchCount（匹配数量）、multiplier（赔率倍数）
+  - 使用场景：验证游戏是否按照相同的种子和算法生成结果
+
 **特点**：
 - 需要 JWT Token 认证
 - 使用与游戏相同的算法

@@ -324,7 +324,171 @@ GET_GAME_CONFIG 响应中包含完整的游戏配置，关键字段说明：
 
 前端应根据玩家选择的难度，从对应的难度配置中获取赔率显示。
 
-## 7. 相关文档
+## 7. 可证明公平性验证
+
+Keno 游戏提供完整的可证明公平机制，玩家可以独立验证游戏结果的公平性。
+
+### 7.1 验证方法
+
+使用 RESTful API 验证接口：`POST /v1/fairness/keno/verify`
+
+**认证方式**：需要 JWT Token（通过 WebSocket 或 HTTP Header 提供）
+
+### 7.2 请求示例
+
+```bash
+curl -X POST https://dev.hicasino.xyz/v1/fairness/keno/verify \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "clientSeed": "player_seed_12345",
+    "serverSeed": "revealed_server_seed_abc123",
+    "nonce": 1,
+    "selectedNumbers": [3, 7, 15, 22, 28],
+    "difficulty": "classic"
+  }'
+```
+
+```json
+{
+  "clientSeed": "player_seed_12345",
+  "serverSeed": "revealed_server_seed_abc123",
+  "nonce": 1,
+  "selectedNumbers": [3, 7, 15, 22, 28],
+  "difficulty": "classic"
+}
+```
+
+### 7.3 请求参数说明
+
+| 参数 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `clientSeed` | string | 是 | 客户端种子（从游戏记录获取） |
+| `serverSeed` | string | 是 | 已揭示的服务端种子（从游戏记录获取） |
+| `nonce` | int64 | 是 | nonce 值（从游戏记录获取） |
+| `selectedNumbers` | number[] | 是 | 玩家选择的数字（1-10个，范围1-40） |
+| `difficulty` | string | 是 | 难度模式（low/classic/medium/high） |
+
+### 7.4 响应示例
+
+```json
+{
+  "drawnNumbers": [3, 7, 9, 12, 15, 18, 22, 25, 31, 35],
+  "matchedNumbers": [3, 7, 15, 22],
+  "matchCount": 4,
+  "multiplier": 2.5
+}
+```
+
+### 7.5 响应字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `drawnNumbers` | number[] | 验证计算出的系统开出的10个号码 |
+| `matchedNumbers` | number[] | 验证计算出的匹配数字列表 |
+| `matchCount` | number | 验证计算出的匹配数量 |
+| `multiplier` | number | 验证计算出的赔率倍数 |
+
+### 7.6 验证步骤
+
+#### 第 1 步：获取种子信息
+
+从游戏历史记录中获取以下信息：
+- **clientSeed**：你在游戏前设置的客户端种子
+- **serverSeed**：游戏结束后服务端揭示的种子（游戏前只能看到哈希值）
+- **nonce**：该局游戏的 nonce 值（每次游戏后递增）
+- **selectedNumbers**：你选择的数字
+- **difficulty**：你选择的难度模式
+
+通过以下方式获取种子信息：
+- 通过游戏历史记录 API 获取已揭示的服务端种子
+- 客户端种子由你自己设置并保存
+- nonce 在每次游戏后递增
+
+#### 第 2 步：发送验证请求
+
+使用上述参数调用验证接口。
+
+#### 第 3 步：对比结果
+
+将验证返回的结果与游戏实际结果对比：
+- **drawnNumbers**：系统开出的10个号码是否一致
+- **matchedNumbers**：匹配的数字是否一致
+- **matchCount**：匹配数量是否一致
+- **multiplier**：赔率倍数是否一致
+
+#### 第 4 步：确认公平性
+
+如果验证结果与游戏实际结果完全一致，则证明：
+1. 游戏使用了你提供的客户端种子
+2. 游戏使用了服务端承诺的种子（通过哈希验证）
+3. 游戏结果是根据 Provably Fair 算法生成的
+4. 游戏结果不可能被操纵
+
+### 7.7 验证原理
+
+Keno 使用 Fisher-Yates 洗牌算法生成可证明公平的随机结果：
+
+1. **种子组合**：将 serverSeed、clientSeed、nonce 组合成种子字符串
+   ```
+   seedString = "serverSeed:clientSeed:nonce"
+   ```
+
+2. **哈希生成**：对种子字符串进行 SHA256 哈希
+
+3. **随机数生成**：使用哈希值生成确定性的随机序列
+
+4. **数字抽取**：使用 Fisher-Yates 算法从 1-40 中抽取 10 个不重复的数字
+
+5. **结果排序**：将抽取的数字按升序排列返回
+
+由于使用相同的种子和算法，验证接口会产生与游戏完全相同的结果。
+
+### 7.8 种子管理最佳实践
+
+1. **客户端种子**
+   - 在游戏前通过 Seed Service API 设置你自己的客户端种子
+   - 使用随机且唯一的字符串（建议 16+ 字符）
+   - 定期更换客户端种子以增强随机性
+
+2. **服务端种子**
+   - 游戏前只能看到服务端种子的 SHA256 哈希值
+   - 游戏结束后服务端会揭示完整的种子
+   - 你可以验证揭示的种子哈希是否与游戏前承诺的哈希一致
+
+3. **Nonce**
+   - 每次游戏后自动递增
+   - 确保使用相同种子对的多次游戏产生不同结果
+   - 更换种子时 nonce 重置为 0
+
+### 7.9 常见问题
+
+**Q: 为什么验证结果与游戏结果不一致？**
+
+A: 可能的原因：
+- 使用了错误的客户端种子（确认是否在游戏前设置）
+- 使用了错误的服务端种子（必须使用揭示后的完整种子，不是哈希）
+- nonce 值不正确
+- selectedNumbers 或 difficulty 参数与实际游戏不一致
+
+**Q: 什么时候可以获取揭示的服务端种子？**
+
+A: 游戏结束后，服务端会自动揭示该局游戏使用的服务端种子。你可以通过游戏历史记录 API 获取。
+
+**Q: 如何确保服务端没有作弊？**
+
+A:
+1. 游戏前，服务端会提供服务端种子的 SHA256 哈希（承诺）
+2. 游戏结束后，服务端揭示完整的种子
+3. 你可以验证揭示的种子哈希是否与承诺的哈希一致
+4. 如果一致，说明服务端没有在游戏后更改种子
+
+**Q: 验证接口需要认证吗？**
+
+A: 是的，验证接口需要 JWT Token 认证。你可以使用游戏时的 Token，或通过登录获取新 Token。
+
+## 8. 相关文档
 
 - [WebSocket 通用接口](./common-websocket-api-zh.md)
 - [Keno 游戏详细设计](./keno-detailed-design-zh.md)
+- [RESTful API 文档](https://storage.googleapis.com/speedix-invoker-api-docs/index.html) - 完整的 API 参考文档（包括验证接口）
