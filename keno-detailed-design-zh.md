@@ -1,5 +1,57 @@
 # Keno（基诺）游戏详细设计文档 ✅ 已实现
 
+## 配置文件
+
+### 游戏配置 (`configs/games/keno.json`)
+```json
+{
+  "gameId": "inhousegame:keno",
+  "status": "active",
+  "gameParameters": {
+    "payoutTables": {
+      "low": { ... },
+      "classic": { ... },
+      "medium": { ... },
+      "high": { ... }
+    }
+  },
+  "rtp": 99.0
+}
+```
+
+### 配置说明
+- **gameId**: 游戏唯一标识符，格式为 `"inhousegame:keno"`
+- **status**: 游戏状态（`active` 启用，`disabled` 禁用）
+- **gameParameters**: 游戏核心参数
+  - **payoutTables**: 赔率表配置，支持 4 种难度模式
+    - `low`: 低风险模式（高频小奖）
+    - `classic`: 经典模式（平衡模式，默认）
+    - `medium`: 中等风险模式
+    - `high`: 高风险模式（高风险高回报）
+  - 每个难度包含 1-10 个选号数量（spots）的赔率表
+  - 赔率表格式：`{ "spots": [[matchCount, multiplier], ...] }`
+- **rtp**: 理论回报率（99%）
+
+### 配置加载
+- **加载时机**: 服务器启动时，GameRegistry 自动从 `configs/games/` 目录加载所有 `.json` 配置文件
+- **使用方式**: 游戏服务通过 `gameRegistry.GetGame("inhousegame:keno")` 获取配置，加载赔率表用于游戏结算
+- **配置验证**: Service 层和 Biz 层都会验证配置完整性，配置缺失时会 `panic()`
+- **投注限额**: 从 `configs/currencies.json` 自动生成 BetInfo
+
+### 赔率表结构示例
+```json
+"classic": {
+  "5": [
+    [0, 0],     // 匹配0个数字，赔率0
+    [1, 0.25],  // 匹配1个数字，赔率0.25×
+    [2, 1.4],   // 匹配2个数字，赔率1.4×
+    [3, 4.1],   // 匹配3个数字，赔率4.1×
+    [4, 16.5],  // 匹配4个数字，赔率16.5×
+    [5, 36]     // 匹配5个数字（全中），赔率36×
+  ]
+}
+```
+
 ## 游戏规则
 
 Keno是一种类似彩票的即时游戏：

@@ -1,5 +1,38 @@
 # Dice（骰子）游戏详细设计文档
 
+## 配置文件
+
+### 游戏配置 (`configs/games/dice.json`)
+```json
+{
+  "gameId": "inhousegame:dice",
+  "status": "active",
+  "gameParameters": {
+    "rollNumberRange": {
+      "min": 4.0,
+      "max": 96.0
+    },
+    "defaultTarget": 50.0
+  },
+  "rtp": 97.0
+}
+```
+
+### 配置说明
+- **gameId**: 游戏唯一标识符，格式为 `"inhousegame:dice"`
+- **status**: 游戏状态（`active` 启用，`disabled` 禁用）
+- **gameParameters**: 游戏核心参数
+  - **rollNumberRange**: 有效的目标值范围
+    - `min`: 最小目标值（4.0），确保赔率始终大于 1
+    - `max`: 最大目标值（96.0），确保赔率始终大于 1
+  - **defaultTarget**: 默认目标值（50.0）
+- **rtp**: 理论回报率（97%）
+
+### 配置加载
+- **加载时机**: 服务器启动时，GameRegistry 自动从 `configs/games/` 目录加载所有 `.json` 配置文件
+- **使用方式**: 游戏服务通过 `gameRegistry.GetGame("inhousegame:dice")` 获取配置
+- **投注限额**: 从 `configs/currencies.json` 自动生成 BetInfo，Dice 游戏使用自定义生成逻辑
+
 ## 赔率计算公式
 
 Dice游戏支持两种玩法模式：

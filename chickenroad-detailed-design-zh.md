@@ -1,5 +1,51 @@
 # ChickenRoad（小鸡过马路）游戏详细设计文档 ✅ 已实现
 
+## 配置文件
+
+### 游戏配置 (`configs/games/chickenroad.json`)
+```json
+{
+  "gameId": "inhousegame:chickenroad",
+  "status": "active",
+  "gameParameters": {
+    "payoutTables": {
+      "easy": [[1, 1.03], [2, 1.07], ...],
+      "medium": [[1, 1.12], [2, 1.28], ...],
+      "hard": [[1, 1.23], [2, 1.55], ...],
+      "daredevil": [[1, 1.63], [2, 2.80], ...]
+    }
+  },
+  "rtp": 98.0
+}
+```
+
+### 配置说明
+- **gameId**: 游戏唯一标识符，格式为 `"inhousegame:chickenroad"`
+- **status**: 游戏状态（`active` 启用，`disabled` 禁用）
+- **gameParameters**: 游戏核心参数
+  - **payoutTables**: 赔率表配置，支持 4 种难度模式
+    - `easy`: 简单模式（24步，低风险，最高倍率 19.44×）
+    - `medium`: 中等模式（22步，中等风险，最高倍率 1788.80×）
+    - `hard`: 困难模式（20步，高风险，最高倍率 41321.43×）
+    - `daredevil`: 魔鬼模式（15步，极高风险，最高倍率 2542251.93×）
+  - 赔率表格式：`[[step, multiplier], ...]`，每一步对应一个倍率
+- **rtp**: 理论回报率（98%）
+
+### 配置加载
+- **加载时机**: 服务器启动时，GameRegistry 自动从 `configs/games/` 目录加载所有 `.json` 配置文件
+- **使用方式**: 游戏服务通过 `gameRegistry.GetGame("inhousegame:chickenroad")` 获取配置，加载赔率表用于游戏结算
+- **配置验证**: Service 层和 Biz 层都会验证配置完整性，配置缺失时会 `panic()`
+- **投注限额**: 从 `configs/currencies.json` 自动生成 BetInfo
+
+### 难度特征对比
+
+| 难度 | 最大步数 | 最低倍率 | 最高倍率 | 风险等级 |
+|------|----------|----------|----------|----------|
+| Easy | 24 | 1.03× | 19.44× | 低 |
+| Medium | 22 | 1.12× | 1788.80× | 中 |
+| Hard | 20 | 1.23× | 41321.43× | 高 |
+| Daredevil | 15 | 1.63× | 2542251.93× | 极高 |
+
 ## 游戏概述
 
 ChickenRoad 是一个策略性会话游戏，玩家引导小鸡逐步穿越危险的马路，每成功前进一步都会增加赔率倍数，但同时也面临失败的风险。

@@ -1,5 +1,42 @@
 # Mines（扫雷）游戏详细设计文档 ✅ 已实现
 
+## 配置文件
+
+### 游戏配置 (`configs/games/mines.json`)
+```json
+{
+  "gameId": "inhousegame:mines",
+  "status": "active",
+  "gameParameters": {
+    "gridConfigs": {
+      "3x3": {"rows": 3, "cols": 3, "maxMines": 8},
+      "5x5": {"rows": 5, "cols": 5, "maxMines": 24},
+      "7x7": {"rows": 7, "cols": 7, "maxMines": 48}
+    },
+    "defaultGridType": "5x5",
+    "defaultMines": 10
+  },
+  "rtp": 99.0
+}
+```
+
+### 配置说明
+- **gameId**: 游戏唯一标识符，格式为 `"inhousegame:mines"`
+- **status**: 游戏状态（`active` 启用，`disabled` 禁用）
+- **gameParameters**: 游戏核心参数
+  - **gridConfigs**: 支持的网格配置（3×3、5×5、7×7）
+    - `rows`: 行数
+    - `cols`: 列数
+    - `maxMines`: 该网格的最大地雷数量
+  - **defaultGridType**: 默认网格类型（"5x5"）
+  - **defaultMines**: 默认地雷数量（10）
+- **rtp**: 理论回报率（99%）
+
+### 配置加载
+- **加载时机**: 服务器启动时，GameRegistry 自动从 `configs/games/` 目录加载所有 `.json` 配置文件
+- **使用方式**: 游戏服务通过 `gameRegistry.GetGame("inhousegame:mines")` 获取配置，用于验证玩家选择的网格类型和地雷数量
+- **投注限额**: 从 `configs/currencies.json` 自动生成 BetInfo
+
 ## 游戏概述
 
 Mines 是一个策略性扫雷游戏，玩家需要在网格中避开地雷，每成功揭示一个安全格子都会增加赔率倍数。
