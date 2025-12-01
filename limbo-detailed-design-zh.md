@@ -10,7 +10,7 @@ Limbo（倍率点亮）是一款单人即时投注游戏，玩家在下注前设
 
 - **游戏类型**：单人即时结算游戏
 - **下注范围**：0.000100 - 500,000 USD（支持 ≤6 位小数）
-- **倍率范围**：1.01 - 1,000,000.00（输入 2 位小数）
+- **倍率范围**：1.01 - 10.00（输入 2 位小数）
 - **庄家优势**：1%（RTP = 99%）
 - **游戏模式**：手动、自动、极速
 - **历史记录**：最近 25 局倍率结果
@@ -21,7 +21,7 @@ Limbo（倍率点亮）是一款单人即时投注游戏，玩家在下注前设
 | 特性 | Dice | Limbo |
 |------|------|-------|
 | 游戏类型 | 单局即时 | 单局即时 |
-| 输入参数 | 目标数字 (4-96) + 方向 | 目标倍率 (1.01-1,000,000) |
+| 输入参数 | 目标数字 (4-96) + 方向 | 目标倍率 (1.01-10.00) |
 | 结果生成 | 随机数 (0-100) | 随机倍率 (1.00-∞) |
 | 判定逻辑 | roll >=/<= target | result >= target |
 | 赔率设定 | 系统计算 | 玩家设定 |
@@ -34,7 +34,7 @@ Limbo（倍率点亮）是一款单人即时投注游戏，玩家在下注前设
 **BR-001：游戏开始规则**
 - 玩家输入有效下注金额和目标倍率
 - 下注金额范围：0.000100 - 500,000 USD
-- 目标倍率范围：1.01 - 1,000,000.00
+- 目标倍率范围：1.01 - 10.00
 - 系统校验余额充足性和赔付上限
 - 同一玩家同一时刻仅允许一局进行
 
@@ -93,7 +93,7 @@ Limbo（倍率点亮）是一款单人即时投注游戏，玩家在下注前设
 
 // 倍率计算（指数分布）
 result_multiplier = 0.99 / (1 - 归一化值)
-result_multiplier = min(result_multiplier, 1000000)  // 上限保护
+result_multiplier = min(result_multiplier, 10)  // 上限保护
 ```
 
 **概率验证**：
@@ -245,35 +245,27 @@ message LimboGameParameters {
 
 ## 5. 配置管理
 
-### 5.1 游戏配置（configs/games.json）
+### 5.1 游戏配置（configs/games/limbo.json）
 
 ```json
 {
-  "id": 2000007,
-  "gameName": "Limbo",
   "gameId": "inhousegame:limbo",
-  "gameIcon": "icon_Limbo",
-  "category": "instant",
   "status": "active",
-  "description": "Multiplier prediction game with exponential rewards",
-  "thumbnail": "/games/limbo/thumbnail.png",
   "gameParameters": {
     "multiplierRange": {
       "min": 1.01,
-      "max": 1000000.00
-    }
+      "max": 10.0
+    },
+    "defaultMultiplier": 2.0
   },
-  "defaultMultiplier": "2.00",
-  "selectableMultipliers": "1.5,2,5,10,50,100",
-  "commissionRate": "1%",
-  "defaultCommissionRate": "1%",
-  "defaultRTP": "99%",
-  "minBet": 0.0001,
-  "maxBet": 500000,
-  "rtp": 99.0,
-  "features": ["provably_fair", "instant_play", "turbo_mode"]
+  "rtp": 99.0
 }
 ```
+
+**配置说明**：
+- `gameParameters.multiplierRange`：目标倍率的有效范围
+- `gameParameters.defaultMultiplier`：无效输入时使用的默认倍率
+- `rtp`：返还率（99.0 表示 99%，在代码中转换为 0.99）
 
 ### 5.2 常量定义（pkg/consts/games.go）
 
@@ -309,7 +301,7 @@ const (
 
 ### 7.1 参数限制
 
-- 目标倍率：1.01 - 1,000,000.00
+- 目标倍率：1.01 - 10.00
 - 下注金额：0.000100 - 500,000 USD
 - 最高赔付：配置 maxPayoutAmount 上限
 - 并发控制：同一玩家同时只能有一局进行

@@ -1206,73 +1206,16 @@ sequenceDiagram
 
 ## 投注活动历史获取流程 ✅ 已实现
 
-### GET_BET_ACTIVITIES 请求流程
+### RESTful API 获取历史活动
 
-```mermaid
-sequenceDiagram
-    participant Player as 玩家（新连接）
-    participant Client as 客户端
-    participant WSGateway as WS网关
-    participant Handler as 消息处理器
-    participant BetBroadcaster as 投注广播器
-    participant Buffer as 环形缓冲区
+投注活动历史通过 RESTful API `POST /v1/bets/activities` 获取，无需认证。
 
-    Player->>Client: 打开游戏大厅
-    Client->>WSGateway: 建立WebSocket连接
-    Note over Client: 无需认证
-    
-    WSGateway->>Client: 连接确认
-    
-    Client->>Client: 请求历史投注活动
-    Note over Client: 显示游戏热度
-    
-    Client->>WSGateway: GET_BET_ACTIVITIES
-    Note over Client: {<br/>  gameId: "inhousegame:dice",<br/>  limit: 50<br/>}
-    
-    WSGateway->>Handler: 路由消息
-    
-    Handler->>Handler: 验证参数
-    Note over Handler: gameId 必需<br/>limit 1-100
-    
-    alt gameId 缺失
-        Handler->>WSGateway: 错误响应
-        Note over Handler: MISSING_GAME_ID
-        WSGateway->>Client: 参数错误
-    else 参数有效
-        Handler->>BetBroadcaster: GetRecentActivities
-        Note over Handler: gameId: "inhousegame:dice"<br/>limit: 50
-        
-        BetBroadcaster->>Buffer: GetRecent(200)
-        Note over Buffer: 获取最近200条
-        
-        Buffer->>Buffer: 读取环形缓冲区
-        Note over Buffer: O(1)时间复杂度<br/>返回按时间倒序
-        
-        Buffer->>BetBroadcaster: 返回活动列表
-        
-        BetBroadcaster->>BetBroadcaster: 过滤游戏ID
-        Note over BetBroadcaster: 只返回dice游戏<br/>包含所有货币
-        
-        BetBroadcaster->>BetBroadcaster: 限制数量
-        Note over BetBroadcaster: 最多返回50条
-        
-        BetBroadcaster->>Handler: 过滤后的活动
-        
-        Handler->>WSGateway: GET_BET_ACTIVITIES_RESPONSE
-        WSGateway->>Client: 返回历史活动
-        
-        Client->>Player: 显示投注活动
-        Note over Player: 展示游戏热度<br/>其他玩家投注情况
-    end
-    
-    Note over Client: 订阅实时推送
-    Client->>WSGateway: SUBSCRIBE
-    Note over Client: eventTypes: ["BET_ACTIVITY"]
-    
-    WSGateway->>Client: 订阅成功
-    
-    Note over Client: 开始接收实时活动
-```
+**优势**：
+- 统一的 HTTP 接口，无需 WebSocket 连接
+- 支持未登录用户查看游戏热度
+- 与实时推送（BET_ACTIVITY 事件）配合使用
+
+详见 [API 文档](https://storage.googleapis.com/speedix-invoker-api-docs/index.html)。
 
 ### 混合推拉模式工作流程
 
@@ -1280,22 +1223,23 @@ sequenceDiagram
 sequenceDiagram
     participant NewPlayer as 新玩家
     participant OldPlayer as 老玩家
-    participant WSGateway as WS网关
+    participant HTTPServer as HTTP服务器
     participant BetBroadcaster as 投注广播器
     participant RingBuffer as 环形缓冲区
     participant EventBus as 事件总线
+    participant WSGateway as WS网关
 
     Note over NewPlayer,OldPlayer: 新老玩家不同流程
-    
+
     rect rgb(200, 230, 201)
         Note over NewPlayer: 新玩家连接流程
-        NewPlayer->>WSGateway: 建立连接
-        NewPlayer->>WSGateway: GET_BET_ACTIVITIES
-        WSGateway->>BetBroadcaster: 请求历史
+        NewPlayer->>HTTPServer: POST /v1/bets/activities
+        Note over NewPlayer: 无需认证
+        HTTPServer->>BetBroadcaster: 请求历史
         BetBroadcaster->>RingBuffer: 读取缓存
         RingBuffer-->>BetBroadcaster: 历史数据
-        BetBroadcaster-->>WSGateway: 返回历史
-        WSGateway-->>NewPlayer: 显示历史活动
+        BetBroadcaster-->>HTTPServer: 返回历史
+        HTTPServer-->>NewPlayer: 显示历史活动
         
         NewPlayer->>WSGateway: 订阅实时事件
         WSGateway->>EventBus: 注册订阅

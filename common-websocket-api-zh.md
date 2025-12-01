@@ -502,71 +502,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 }
 ```
 
-### 2.7 GET_BET_ACTIVITIES - 获取投注活动历史
-
-获取最近的投注活动记录。此接口不需要认证，允许未登录用户查看游戏热度。
-
-**请求消息**：
-```json
-{
-  "i": "msg_007",
-  "t": "GET_BET_ACTIVITIES",
-  "p": {
-    "gameId": "inhousegame:dice",  // 必需，游戏ID
-    "limit": 50                     // 可选，返回数量限制（1-100，默认50）
-  }
-}
-```
-
-**响应消息**：
-```json
-{
-  "i": "msg_007",
-  "t": "GET_BET_ACTIVITIES_RESPONSE",
-  "p": {
-    "activities": [
-      {
-        "roundId": "bet_123",
-        "playerId": "player_456",
-        "playerName": "Alice***",
-        "gameId": "inhousegame:dice",
-        "betAmount": "100.00",
-        "winAmount": "200.00",
-        "currency": "USD",
-        "multiplier": "2.00",
-        "isWin": true,
-        "timestamp": 1704067200000,
-        "gameOutcome": {
-          "diceOutcome": {
-            "target": 50,
-            "result": 45,
-            "rollType": "UNDER"
-          }
-        }
-      }
-    ],
-    "totalCount": 100,      // 该时间段内的总投注数（采样前）
-    "sampledCount": 50       // 返回的实际数量（采样后）
-  }
-}
-```
-
-**字段说明**：
-- `gameId`: 必需参数，指定要获取哪个游戏的投注活动
-- `limit`: 可选参数，限制返回的活动数量
-- `activities`: 投注活动列表，按时间倒序排列
-- `totalCount`: 统计周期内的总投注数
-- `sampledCount`: 实际返回的活动数量（可能因采样而少于总数）
-
-**使用场景**：
-1. 新用户连接后获取历史投注活动
-2. 展示游戏热度和其他玩家的投注情况
-3. 配合实时推送展示完整的投注流
-
-**注意事项**：
-- 此接口不需要用户认证
-- 返回的玩家名称会进行脱敏处理
-- 配合 BET_ACTIVITY_BATCH 事件订阅可实现完整的活动流展示
+> **注意**: 如需获取投注活动历史，请使用 RESTful API `POST /v1/bets/activities`，该接口不需要认证。详见 [API 文档](https://storage.googleapis.com/speedix-invoker-api-docs/index.html)。
 
 ## 3. 事件推送
 

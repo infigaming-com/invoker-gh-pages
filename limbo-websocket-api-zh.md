@@ -98,7 +98,7 @@ Limbo 游戏使用 WebSocket 协议进行实时通信，客户端通过 `PLACE_B
 | 字段 | 类型 | 必填 | 说明 | 范围 |
 |------|------|------|------|------|
 | amount | string | 是 | 下注金额 | 0.000100 - 500,000 USD |
-| gameParams.limbo.targetMultiplier | string | 是 | 目标倍率 | 1.01 - 1,000,000.00 |
+| gameParams.limbo.targetMultiplier | string | 是 | 目标倍率 | 1.01 - 10.00 |
 
 **响应消息**：
 
@@ -301,11 +301,11 @@ Limbo 游戏使用 WebSocket 协议进行实时通信，客户端通过 `PLACE_B
           ],
           "gameParameters": {
             "minMultiplier": "1.01",
-            "maxMultiplier": "1000000.00",
+            "maxMultiplier": "10.00",
             "defaultMultiplier": "2.00"
           },
           "commissionRate": "1%",
-          "maxRewardMultiplier": 1000000.0
+          "maxRewardMultiplier": 10.0
         }
       }
     ]
@@ -392,7 +392,7 @@ Limbo 游戏使用 WebSocket 协议进行实时通信，客户端通过 `PLACE_B
 | 错误代码 | 说明 | 解决方案 |
 |---------|------|----------|
 | UNAUTHORIZED | 未认证 | 先发送 LOGIN 消息 |
-| INVALID_TARGET_MULTIPLIER | 无效的目标倍率 | 倍率范围：1.01 - 1,000,000.00 |
+| INVALID_TARGET_MULTIPLIER | 无效的目标倍率 | 倍率范围：1.01 - 10.00 |
 | INVALID_AMOUNT | 无效的下注金额 | 金额范围：0.000100 - 500,000 |
 | INSUFFICIENT_BALANCE | 余额不足 | 充值或减少下注金额 |
 | PAYOUT_LIMIT_EXCEEDED | 超过赔付上限 | 减少下注金额或目标倍率 |
@@ -456,11 +456,11 @@ function calculateMultiplier(hash) {
 
   if (r >= 0.99) {
     // 极限情况保护
-    return 1000000.00;
+    return 10.00;
   }
 
   const multiplier = 0.99 / (1 - r);
-  return Math.min(multiplier, 1000000.00);
+  return Math.min(multiplier, 10.00);
 }
 ```
 
