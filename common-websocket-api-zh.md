@@ -454,7 +454,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "i": "msg_005",
   "t": "SUBSCRIBE",
   "p": {
-    "eventTypes": ["BET_ACTIVITY", "BALANCE_UPDATE"],
+    "eventTypes": ["BET_ACTIVITY_BATCH", "BALANCE_UPDATE"],
     "filters": "{\"gameId\": \"inhousegame:dice\"}"  // 可选过滤条件
   }
 }
@@ -467,7 +467,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "t": "SUBSCRIBE",
   "p": {
     "subscriptionId": "sub_123",
-    "eventTypes": ["BET_ACTIVITY", "BALANCE_UPDATE"],
+    "eventTypes": ["BET_ACTIVITY_BATCH", "BALANCE_UPDATE"],
     "success": true,
     "message": "订阅成功"
   }
@@ -484,7 +484,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "i": "msg_006",
   "t": "UNSUBSCRIBE",
   "p": {
-    "eventTypes": ["BET_ACTIVITY"],  // 可选，不提供则取消所有订阅
+    "eventTypes": ["BET_ACTIVITY_BATCH"],  // 可选，不提供则取消所有订阅
     "subscriptionId": "sub_123"      // 可选
   }
 }
@@ -544,29 +544,54 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 }
 ```
 
-### 3.3 BET_ACTIVITY - 投注活动广播
+### 3.3 BET_ACTIVITY_BATCH - 投注活动批量广播
 
-实时广播其他玩家的投注活动（需要先订阅）。
+实时批量广播其他玩家的投注活动（需要先订阅）。系统会对投注活动进行采样和批量处理，以优化网络传输。
 
 **推送消息**：
 ```json
 {
   "i": "server_msg_003",
-  "t": "BET_ACTIVITY",
+  "t": "BET_ACTIVITY_BATCH",
   "p": {
-    "playerId": "player_456",
-    "playerName": "Player456",
-    "gameId": "inhousegame:dice",
-    "gameName": "Dice",
-    "betAmount": "100.00",
-    "winAmount": "200.00",
-    "multiplier": "2.00",
-    "isWin": true,
-    "currency": "USD",
-    "timestamp": 1704067220000
+    "activities": [
+      {
+        "maskedPlayerId": "pla***456",
+        "maskedUsername": "Pla***456",
+        "gameId": "inhousegame:dice",
+        "betAmount": "100.00000000",
+        "potentialWin": "200.00000000",
+        "multiplier": "2.00000000",
+        "isWin": true,
+        "winAmount": "200.00000000",
+        "currency": "USD",
+        "countryCode": "US",
+        "timestamp": 1704067220
+      }
+    ]
   }
 }
 ```
+
+**字段说明**：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `maskedPlayerId` | string | 脱敏后的玩家 ID（**已废弃**，将在未来版本移除，请使用 `maskedUsername`） |
+| `maskedUsername` | string | 脱敏后的用户名（推荐使用） |
+| `gameId` | string | 游戏 ID |
+| `betAmount` | string | 投注金额（8位小数精度） |
+| `potentialWin` | string | 潜在赢取金额 |
+| `multiplier` | string | 倍率 |
+| `isWin` | bool | 是否赢了（可选，游戏结束时才有） |
+| `winAmount` | string | 实际赢取金额（仅当 isWin=true 时有值） |
+| `currency` | string | 货币类型 |
+| `countryCode` | string | 国家代码 |
+| `timestamp` | int64 | Unix 秒时间戳 |
+
+**注意事项**：
+- 投注活动会根据金额大小进行采样，大额投注和大额赢取更容易被广播
+- 消息以批量形式推送，每批最多包含 20 条活动记录
+- 用户名使用脱敏处理，保护玩家隐私（如 "Player456" → "Pla***456"）
 
 ## 4. 心跳机制
 
