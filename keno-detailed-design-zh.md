@@ -7,48 +7,63 @@
 {
   "gameId": "inhousegame:keno",
   "status": "active",
+  "oddsType": "table",
   "gameParameters": {
-    "payoutTables": {
-      "low": { ... },
-      "classic": { ... },
-      "medium": { ... },
-      "high": { ... }
-    }
+    "defaultDifficulty": "classic",
+    "minSpots": 1,
+    "maxSpots": 10
   },
-  "rtp": 99.0
+  "payoutTables": {
+    "low": {
+      "spots": {
+        "1": {"entries": [{"hits": 0, "payout": 0.7}, {"hits": 1, "payout": 1.85}]},
+        "5": {"entries": [{"hits": 0, "payout": 0}, {"hits": 1, "payout": 0}, {"hits": 2, "payout": 1.5}, {"hits": 3, "payout": 4.2}, {"hits": 4, "payout": 13}, {"hits": 5, "payout": 300}]}
+      }
+    },
+    "classic": { ... },
+    "medium": { ... },
+    "high": { ... }
+  }
 }
 ```
 
 ### 配置说明
 - **gameId**: 游戏唯一标识符，格式为 `"inhousegame:keno"`
 - **status**: 游戏状态（`active` 启用，`disabled` 禁用）
-- **gameParameters**: 游戏核心参数
-  - **payoutTables**: 赔率表配置，支持 4 种难度模式
-    - `low`: 低风险模式（高频小奖）
-    - `classic`: 经典模式（平衡模式，默认）
-    - `medium`: 中等风险模式
-    - `high`: 高风险模式（高风险高回报）
+- **oddsType**: 赔率类型，`table` 表示表驱动（赔率由 payoutTables 决定）
+- **gameParameters**: 游戏参数
+  - **defaultDifficulty**: 默认难度（`classic`）
+  - **minSpots**: 最少选号数量（1）
+  - **maxSpots**: 最多选号数量（10）
+- **payoutTables**: 赔率表配置，支持 4 种难度模式
+  - `low`: 低风险模式（高频小奖）
+  - `classic`: 经典模式（平衡模式，默认）
+  - `medium`: 中等风险模式
+  - `high`: 高风险模式（高风险高回报）
   - 每个难度包含 1-10 个选号数量（spots）的赔率表
-  - 赔率表格式：`{ "spots": [[matchCount, multiplier], ...] }`
-- **rtp**: 理论回报率（99%）
+  - 赔率表格式：`{ "spots": { "N": { "entries": [{"hits": H, "payout": P}, ...] } } }`
 
 ### 配置加载
 - **加载时机**: 服务器启动时，GameRegistry 自动从 `configs/games/` 目录加载所有 `.json` 配置文件
 - **使用方式**: 游戏服务通过 `gameRegistry.GetGame("inhousegame:keno")` 获取配置，加载赔率表用于游戏结算
-- **配置验证**: Service 层和 Biz 层都会验证配置完整性，配置缺失时会 `panic()`
+- **配置验证**: Service 层和 Biz 层都会验证配置完整性，配置缺失时返回错误
 - **投注限额**: 从 `configs/currencies.json` 自动生成 BetInfo
 
 ### 赔率表结构示例
 ```json
 "classic": {
-  "5": [
-    [0, 0],     // 匹配0个数字，赔率0
-    [1, 0.25],  // 匹配1个数字，赔率0.25×
-    [2, 1.4],   // 匹配2个数字，赔率1.4×
-    [3, 4.1],   // 匹配3个数字，赔率4.1×
-    [4, 16.5],  // 匹配4个数字，赔率16.5×
-    [5, 36]     // 匹配5个数字（全中），赔率36×
-  ]
+  "spots": {
+    "5": {
+      "entries": [
+        {"hits": 0, "payout": 0},      // 匹配0个数字，赔率0
+        {"hits": 1, "payout": 0.25},   // 匹配1个数字，赔率0.25×
+        {"hits": 2, "payout": 1.4},    // 匹配2个数字，赔率1.4×
+        {"hits": 3, "payout": 4.1},    // 匹配3个数字，赔率4.1×
+        {"hits": 4, "payout": 16.5},   // 匹配4个数字，赔率16.5×
+        {"hits": 5, "payout": 36}      // 匹配5个数字（全中），赔率36×
+      ]
+    }
+  }
 }
 ```
 

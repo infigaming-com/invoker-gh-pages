@@ -327,7 +327,7 @@ Limbo 游戏使用 WebSocket 协议进行实时通信，客户端通过 `PLACE_B
   "t": "SUBSCRIBE",
   "p": {
     "@type": "type.googleapis.com/api.game.v1.SubscribeRequest",
-    "eventTypes": ["BET_ACTIVITY", "BALANCE_UPDATE"]
+    "eventTypes": ["BET_ACTIVITY"]
   }
 }
 ```
@@ -341,30 +341,9 @@ Limbo 游戏使用 WebSocket 协议进行实时通信，客户端通过 `PLACE_B
   "p": {
     "@type": "type.googleapis.com/api.game.v1.SubscribeResponse",
     "subscriptionId": "sub_12345",
-    "eventTypes": ["BET_ACTIVITY", "BALANCE_UPDATE"],
+    "eventTypes": ["BET_ACTIVITY"],
     "success": true,
     "message": "Successfully subscribed"
-  }
-}
-```
-
-### 5.2 事件推送
-
-**余额更新事件**：
-
-```json
-{
-  "i": "event_001",
-  "t": "BALANCE_UPDATE",
-  "p": {
-    "@type": "type.googleapis.com/api.game.v1.BalanceUpdateEvent",
-    "playerId": "player_123",
-    "currency": "USD",
-    "balance": "1020.00",
-    "changeAmount": "20.00",
-    "reason": "game_win",
-    "gameId": "inhousegame:limbo",
-    "timestamp": 1704067200000
   }
 }
 ```

@@ -967,11 +967,6 @@ sequenceDiagram
 
             Note over Scheduler: ✅ 自动完成结算
 
-            opt 用户重连后
-                InvokerFE->>InvokerBE: 重连 WebSocket
-                Note over InvokerBE: BalanceSyncer<br/>自动同步余额
-                InvokerBE--)InvokerFE: BALANCE_UPDATE<br/>{balance: 110}
-            end
         end
     end
 
@@ -1032,43 +1027,6 @@ sequenceDiagram
     EventBus->>SubscriptionManager: 路由事件
     SubscriptionManager->>WSGateway: 投递给客户端2
     WSGateway->>Client2: LIVE_STATS_EVENT
-```
-
-## 余额更新推送流程
-
-```mermaid
-sequenceDiagram
-    participant GA as 游戏聚合器
-    participant ProviderAPI as Provider API
-    participant BalanceService as 余额服务
-    participant EventBus as 事件总线
-    participant WSGateway as WS网关
-    participant Client as 客户端
-    participant Player as 玩家
-
-    Note over GA,Player: 自动余额推送
-
-    GA->>ProviderAPI: 余额变更通知
-    Note over GA: 玩家下注/赢奖后
-    
-    ProviderAPI->>BalanceService: 更新余额缓存
-    BalanceService->>BalanceService: 清除旧缓存
-    
-    BalanceService->>EventBus: 发布 BALANCE_UPDATE 事件
-    Note over EventBus: 事件内容：<br/>player_id<br/>new_balance<br/>currency
-    
-    EventBus->>WSGateway: 路由到玩家连接
-    WSGateway->>WSGateway: 查找玩家连接
-    
-    alt 玩家在线
-        WSGateway->>Client: BALANCE_UPDATE 消息
-        Note over Client: {<br/>  type: "BALANCE_UPDATE",<br/>  balance: "1050.00",<br/>  currency: "USD"<br/>}
-        Client->>Player: 更新余额显示
-        Note over Player: 实时看到余额变化
-    else 玩家离线
-        WSGateway->>WSGateway: 跳过推送
-        Note over WSGateway: 玩家重连时<br/>会获取最新余额
-    end
 ```
 
 ## 实时投注活动广播流程
@@ -1835,6 +1793,5 @@ sequenceDiagram
 ---
 
 ## 相关文档
-- [详细设计](./detailed-design-zh.md) - 架构和设计原则
 - [API 参考](./api-reference-zh.md) - 详细的端点文档
 - [集成指南](others/integration-guide-zh.md) - 分步集成说明

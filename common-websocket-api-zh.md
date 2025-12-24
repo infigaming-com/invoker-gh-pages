@@ -99,7 +99,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 
 ### 2.2 GET_GAME_CONFIG - 获取游戏配置
 
-获取游戏配置信息，包括投注限额、RTP等。
+获取游戏配置信息，包括投注限额、RTP、游戏参数等。配置支持运营商级别覆盖。
 
 **请求消息**：
 ```json
@@ -113,7 +113,30 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 }
 ```
 
-**响应消息**（Dice游戏示例）：
+#### 响应字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `gameId` | string | 游戏唯一标识，格式：`inhousegame:gametype` |
+| `status` | string | 游戏状态：`active` / `inactive` |
+| `rtp` | number | 返还率（百分比），如 97.0 表示 97% |
+| `betInfo` | array | 各货币的投注限额配置 |
+| `gameParameters` | object | 游戏特定参数 |
+| `payoutTables` | object | 赔率表（仅表驱动游戏有此字段） |
+
+**betInfo 字段结构**：
+```json
+{
+  "currency": "USD",
+  "currencyType": "fiat",
+  "defaultBet": 1,
+  "minBet": 0.1,
+  "maxBet": 10000,
+  "maxProfit": 100000
+}
+```
+
+**响应消息**（Dice 游戏 - 公式驱动）：
 ```json
 {
   "i": "msg_002",
@@ -123,16 +146,9 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
       {
         "gameId": "inhousegame:dice",
         "config": {
-          "id": 1,
-          "gameName": "Dice",
           "gameId": "inhousegame:dice",
-          "category": "instant",
           "status": "active",
-          "description": "Classic dice game",
-          "minBet": 0.1,
-          "maxBet": 10000,
-          "rtp": 99,
-          "defaultRTP": "99",
+          "rtp": 97,
           "betInfo": [
             {
               "currency": "USD",
@@ -142,7 +158,12 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
               "maxBet": 10000,
               "maxProfit": 100000
             }
-          ]
+          ],
+          "gameParameters": {
+            "rollNumberMin": 4,
+            "rollNumberMax": 96,
+            "defaultTarget": 50
+          }
         }
       }
     ]
@@ -150,24 +171,19 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 }
 ```
 
-**响应消息**（Keno游戏示例）：
+**响应消息**（Keno 游戏 - 表驱动）：
 ```json
 {
   "i": "msg_002",
-  "t": "GET_GAME_CONFIG_RESPONSE",
+  "t": "GET_GAME_CONFIG",
   "p": {
     "configs": [
       {
         "gameId": "inhousegame:keno",
         "config": {
-          "id": 2000005,
-          "gameName": "Keno",
           "gameId": "inhousegame:keno",
-          "category": "instant",
           "status": "active",
-          "description": "Classic lottery-style game",
-          "defaultRTP": "97%",
-          "features": ["provably_fair", "instant_play", "number_selection"],
+          "rtp": 97,
           "betInfo": [
             {
               "currency": "USD",
@@ -179,65 +195,33 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
             }
           ],
           "gameParameters": {
-            "minNumber": 1,
-            "maxNumber": 40,
+            "defaultDifficulty": "classic",
             "minSpots": 1,
-            "maxSpots": 10,
-            "drawnNumbers": 10,
-            "availableSpots": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-            "payoutTables": [
-              {
-                "difficulty": "low",
-                "payouts": [
-                  {
-                    "spots": 1,
-                    "entries": [
-                      {"hits": 0, "payout": 0.7},
-                      {"hits": 1, "payout": 1.85}
-                    ]
-                  },
-                  {
-                    "spots": 2,
-                    "entries": [
-                      {"hits": 0, "payout": 0},
-                      {"hits": 2, "payout": 3.8}
-                    ]
-                  }
-                  // ... spots 3-10 的赔率配置
-                ]
-              },
-              {
-                "difficulty": "classic",
-                "payouts": [
-                  {
-                    "spots": 1,
-                    "entries": [
-                      {"hits": 0, "payout": 0},
-                      {"hits": 1, "payout": 3.96}
-                    ]
-                  }
-                  // ... spots 2-10 的赔率配置
-                ]
-              },
-              {
-                "difficulty": "medium",
-                "payouts": [
-                  // ... 完整的 spots 1-10 赔率配置
-                ]
-              },
-              {
-                "difficulty": "high",
-                "payouts": [
-                  // ... 完整的 spots 1-10 赔率配置
-                ]
-              }
-            ]
+            "maxSpots": 10
           },
-          "rtpConfig": {
-            "rtpBySpots": {}
-          },
-          "commissionRate": "1%",
-          "maxRewardMultiplier": 50000
+          "payoutTables": {
+            "classic": {
+              "payouts": [
+                {
+                  "spots": 1,
+                  "entries": [
+                    {"hits": 0, "payout": 0},
+                    {"hits": 1, "payout": 3.96}
+                  ]
+                },
+                {
+                  "spots": 2,
+                  "entries": [
+                    {"hits": 0, "payout": 0},
+                    {"hits": 2, "payout": 3.8}
+                  ]
+                }
+              ]
+            },
+            "low": { "payouts": [...] },
+            "medium": { "payouts": [...] },
+            "high": { "payouts": [...] }
+          }
         }
       }
     ]
@@ -245,35 +229,26 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 }
 ```
 
-**注意**：Keno 的 `payoutTables` 字段为嵌套数组格式：
-- 包含 low、classic、medium、high 四个难度的完整赔率表
-- 每个难度对象包含：
-  - `difficulty`: 难度标识
-  - `payouts`: 该难度下所有选择数量（1-10）的赔率配置
-- 每个 payout 包含：
+**payoutTables 结构说明**（表驱动游戏）：
+- 顶级为难度/风险等级的 map（如 `classic`、`low`、`medium`、`high`）
+- 每个难度包含 `payouts` 数组，按选择数量（spots）分组
+- 每个 payout 条目包含：
   - `spots`: 玩家选择的数字数量
-  - `entries`: 该选择数量下的所有赔率条目
-    - `hits`: 命中数量
-    - `payout`: 对应的赔率倍数
+  - `entries`: 命中数量与赔率的映射
 
-**响应消息**（Plinko 游戏示例）：
+**响应消息**（Plinko 游戏 - 表驱动）：
 ```json
 {
   "i": "msg_003",
-  "t": "GET_GAME_CONFIG_RESPONSE",
+  "t": "GET_GAME_CONFIG",
   "p": {
     "configs": [
       {
         "gameId": "inhousegame:plinko",
         "config": {
-          "id": 2000008,
-          "gameName": "Plinko",
           "gameId": "inhousegame:plinko",
-          "category": "instant",
           "status": "active",
-          "description": "Drop balls through pegs to win multipliers",
-          "defaultRTP": "97%",
-          "features": ["provably_fair", "instant_play", "risk_levels"],
+          "rtp": 97,
           "betInfo": [
             {
               "currency": "USD",
@@ -285,42 +260,27 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
             }
           ],
           "gameParameters": {
-            "minRows": 8,
-            "maxRows": 16,
-            "defaultRows": 14,
             "defaultDifficulty": "medium",
-            "difficultyLevels": ["low", "medium", "high"],
-            "availableRows": [8, 10, 12, 14, 16],
-            "payoutTables": {
-              "low": {
-                "rows": {
-                  "8": { "multipliers": [5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6] },
-                  "10": { "multipliers": [8.9, 3, 1.4, 1.1, 1, 0.5, 1, 1.1, 1.4, 3, 8.9] },
-                  "12": { "multipliers": [10, 3, 1.6, 1.4, 1.1, 1, 0.5, 1, 1.1, 1.4, 1.6, 3, 10] }
-                  // ... 14、16 行配置
-                }
-              },
-              "medium": {
-                "rows": {
-                  "8": { "multipliers": [13, 3, 1.3, 0.7, 0.4, 0.7, 1.3, 3, 13] },
-                  "10": { "multipliers": [22, 5, 2, 1.4, 0.6, 0.4, 0.6, 1.4, 2, 5, 22] }
-                  // ... 12、14、16 行配置
-                }
-              },
-              "high": {
-                "rows": {
-                  "8": { "multipliers": [29, 4, 1.5, 0.3, 0.2, 0.3, 1.5, 4, 29] },
-                  "16": { "multipliers": [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000] }
-                  // ... 其他行配置
-                }
+            "defaultRows": 14
+          },
+          "payoutTables": {
+            "low": {
+              "rows": {
+                "8": { "multipliers": [5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6] },
+                "10": { "multipliers": [8.9, 3, 1.4, 1.1, 1, 0.5, 1, 1.1, 1.4, 3, 8.9] }
+              }
+            },
+            "medium": {
+              "rows": {
+                "8": { "multipliers": [13, 3, 1.3, 0.7, 0.4, 0.7, 1.3, 3, 13] }
+              }
+            },
+            "high": {
+              "rows": {
+                "8": { "multipliers": [29, 4, 1.5, 0.3, 0.2, 0.3, 1.5, 4, 29] }
               }
             }
-          },
-          "rtpConfig": {
-            "defaultRtp": "97%"
-          },
-          "commissionRate": "1%",
-          "maxRewardMultiplier": 1000
+          }
         }
       }
     ]
@@ -328,31 +288,24 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 }
 ```
 
-**注意**：Plinko 的 `payoutTables` 字段为嵌套 map 格式：
-- 第一层 map：按难度分类（"low"、"medium"、"high"）
-- 第二层 map：按行数分类（"8"、"10"、"12"、"14"、"16"）
-- 最内层：`multipliers` 数组包含该配置下所有槽位的倍率
-- 倍率数组长度 = 行数 + 1（例如：8行有9个槽位）
-- 倍率分布对称，从中心向两边递增
+**Plinko payoutTables 结构**：
+- 第一层：难度等级（`low`、`medium`、`high`）
+- 第二层 `rows`：按行数分类（`8`、`10`、`12`、`14`、`16`）
+- `multipliers` 数组：槽位倍率，长度 = 行数 + 1
 
-**响应消息**（Dragon Tiger 游戏示例）：
+**响应消息**（Dragon Tiger 游戏 - 公式驱动）：
 ```json
 {
   "i": "msg_004",
-  "t": "GET_GAME_CONFIG_RESPONSE",
+  "t": "GET_GAME_CONFIG",
   "p": {
     "configs": [
       {
         "gameId": "inhousegame:dragontiger",
         "config": {
-          "id": 2000011,
-          "gameName": "Dragon Tiger",
           "gameId": "inhousegame:dragontiger",
-          "category": "instant",
           "status": "active",
-          "description": "Classic Dragon vs Tiger card comparison game",
-          "defaultRTP": "98.5%",
-          "features": ["provably_fair", "instant_play", "multi_bet", "tie_refund"],
+          "rtp": 98.5,
           "betInfo": [
             {
               "currency": "USD",
@@ -369,12 +322,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
             "tigerOdds": 1.0,
             "tieOdds": 11.0,
             "tieRefundRate": 0.5
-          },
-          "rtpConfig": {
-            "defaultRtp": "98.5%"
-          },
-          "commissionRate": "5%",
-          "maxRewardMultiplier": 11
+          }
         }
       }
     ]
@@ -382,12 +330,12 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 }
 ```
 
-**注意**：Dragon Tiger 的 `gameParameters` 字段说明：
-- `commissionRate`: 佣金费率（通常为 5%）
-- `dragonOdds`: 龙方赔率（1赔1）
-- `tigerOdds`: 虎方赔率（1赔1）
-- `tieOdds`: 和局赔率（1赔11）
-- `tieRefundRate`: 平局时的退款比例（通常为 50%）
+**Dragon Tiger gameParameters 说明**：
+- `commissionRate`: 佣金费率（5%）
+- `dragonOdds`: 龙方赔率（1:1）
+- `tigerOdds`: 虎方赔率（1:1）
+- `tieOdds`: 和局赔率（1:11）
+- `tieRefundRate`: 平局退款比例（50%）
 
 ### 2.3 GET_BALANCE - 获取余额
 
@@ -454,7 +402,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "i": "msg_005",
   "t": "SUBSCRIBE",
   "p": {
-    "eventTypes": ["BET_ACTIVITY_BATCH", "BALANCE_UPDATE"],
+    "eventTypes": ["BET_ACTIVITY_BATCH"],
     "filters": "{\"gameId\": \"inhousegame:dice\"}"  // 可选过滤条件
   }
 }
@@ -467,7 +415,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
   "t": "SUBSCRIBE",
   "p": {
     "subscriptionId": "sub_123",
-    "eventTypes": ["BET_ACTIVITY_BATCH", "BALANCE_UPDATE"],
+    "eventTypes": ["BET_ACTIVITY_BATCH"],
     "success": true,
     "message": "订阅成功"
   }
@@ -523,28 +471,7 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 }
 ```
 
-### 3.2 BALANCE_UPDATE - 余额更新
-
-当玩家余额发生变化时推送。
-
-**推送消息**：
-```json
-{
-  "i": "server_msg_002",
-  "t": "BALANCE_UPDATE",
-  "p": {
-    "playerId": "player_123",
-    "currency": "USD",
-    "balance": "1050.00",
-    "changeAmount": "50.00",
-    "reason": "WIN",
-    "gameId": "inhousegame:dice",
-    "timestamp": 1704067210000
-  }
-}
-```
-
-### 3.3 BET_ACTIVITY_BATCH - 投注活动批量广播
+### 3.2 BET_ACTIVITY_BATCH - 投注活动批量广播
 
 实时批量广播其他玩家的投注活动（需要先订阅）。系统会对投注活动进行采样和批量处理，以优化网络传输。
 
@@ -765,5 +692,4 @@ wss://dev.hicasino.xyz/v1/ws?token={JWT_TOKEN}
 - [Dragon Tiger 游戏 WebSocket API](./dragontiger-websocket-api-zh.md)
 
 ### 其他文档
-- [详细设计](./detailed-design-zh.md) - 架构和设计原则
 - [序列图](./sequence-diagrams-zh.md) - 可视化流程展示

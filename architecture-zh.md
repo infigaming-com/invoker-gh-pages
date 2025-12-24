@@ -274,7 +274,6 @@ sequenceDiagram
 
 ## 相关文档
 
-- **[详细设计文档](./detailed-design-zh.md)** - 系统设计、API 设计、数据模型、认证授权
 - **[序列图文档](./sequence-diagrams-zh.md)** - 业务流程可视化
 - **[WebSocket API](./websocket-api-reference-zh.md)** - WebSocket 消息格式和示例
 - **[RESTful API](https://storage.googleapis.com/speedix-invoker-api-docs/index.html)** - HTTP/gRPC 端点文档

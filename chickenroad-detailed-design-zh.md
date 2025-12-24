@@ -7,34 +7,44 @@
 {
   "gameId": "inhousegame:chickenroad",
   "status": "active",
+  "oddsType": "table",
+  "rtp": 98.0,
   "gameParameters": {
-    "payoutTables": {
-      "easy": [[1, 1.03], [2, 1.07], ...],
-      "medium": [[1, 1.12], [2, 1.28], ...],
-      "hard": [[1, 1.23], [2, 1.55], ...],
-      "daredevil": [[1, 1.63], [2, 2.80], ...]
-    }
+    "defaultDifficulty": "easy"
   },
-  "rtp": 98.0
+  "payoutTables": {
+    "easy": {
+      "multipliers": [
+        {"step": 1, "multiplier": 1.03}, {"step": 2, "multiplier": 1.07}, {"step": 3, "multiplier": 1.12},
+        ...
+        {"step": 24, "multiplier": 19.44}
+      ]
+    },
+    "medium": { ... },
+    "hard": { ... },
+    "daredevil": { ... }
+  }
 }
 ```
 
 ### 配置说明
 - **gameId**: 游戏唯一标识符，格式为 `"inhousegame:chickenroad"`
 - **status**: 游戏状态（`active` 启用，`disabled` 禁用）
-- **gameParameters**: 游戏核心参数
-  - **payoutTables**: 赔率表配置，支持 4 种难度模式
-    - `easy`: 简单模式（24步，低风险，最高倍率 19.44×）
-    - `medium`: 中等模式（22步，中等风险，最高倍率 1788.80×）
-    - `hard`: 困难模式（20步，高风险，最高倍率 41321.43×）
-    - `daredevil`: 魔鬼模式（15步，极高风险，最高倍率 2542251.93×）
-  - 赔率表格式：`[[step, multiplier], ...]`，每一步对应一个倍率
-- **rtp**: 理论回报率（98%）
+- **oddsType**: 赔率类型，`table` 表示表驱动（赔率由 payoutTables 决定）
+- **rtp**: 理论回报率（98%），用于计算存活概率（存活概率 = RTP / 倍率）
+- **gameParameters**: 游戏参数
+  - **defaultDifficulty**: 默认难度（`easy`）
+- **payoutTables**: 赔率表配置，支持 4 种难度模式
+  - `easy`: 简单模式（24步，低风险，最高倍率 19.44×）
+  - `medium`: 中等模式（22步，中等风险，最高倍率 1788.80×）
+  - `hard`: 困难模式（20步，高风险，最高倍率 41321.43×）
+  - `daredevil`: 魔鬼模式（15步，极高风险，最高倍率 2542251.93×）
+  - 赔率表格式：`{ "multipliers": [{"step": N, "multiplier": M}, ...] }`
 
 ### 配置加载
 - **加载时机**: 服务器启动时，GameRegistry 自动从 `configs/games/` 目录加载所有 `.json` 配置文件
 - **使用方式**: 游戏服务通过 `gameRegistry.GetGame("inhousegame:chickenroad")` 获取配置，加载赔率表用于游戏结算
-- **配置验证**: Service 层和 Biz 层都会验证配置完整性，配置缺失时会 `panic()`
+- **配置验证**: Service 层和 Biz 层都会验证配置完整性，配置缺失时返回错误
 - **投注限额**: 从 `configs/currencies.json` 自动生成 BetInfo
 
 ### 难度特征对比

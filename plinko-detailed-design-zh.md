@@ -7,38 +7,44 @@
 {
   "gameId": "inhousegame:plinko",
   "status": "active",
+  "oddsType": "table",
   "gameParameters": {
-    "multiplierConfig": {
-      "low": {
-        "8": [5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6],
-        "12": [10, 3, 1.6, 1.4, 1.1, 1, 0.5, 1, 1.1, 1.4, 1.6, 3, 10],
-        "16": [16, 9, 2, 1.5, 1.4, 1.4, 1.2, 1.1, 0.5, 1.1, 1.2, 1.4, 1.4, 1.5, 2, 9, 16]
-      },
-      "medium": { ... },
-      "high": { ... }
-    }
+    "defaultDifficulty": "medium",
+    "defaultRows": 12
   },
-  "rtp": 99.0
+  "payoutTables": {
+    "low": {
+      "rows": {
+        "8": {"multipliers": [5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6]},
+        "12": {"multipliers": [10, 3, 1.6, 1.4, 1.1, 1, 0.5, 1, 1.1, 1.4, 1.6, 3, 10]},
+        "16": {"multipliers": [16, 9, 2, 1.5, 1.4, 1.4, 1.2, 1.1, 0.5, 1.1, 1.2, 1.4, 1.4, 1.5, 2, 9, 16]}
+      }
+    },
+    "medium": { ... },
+    "high": { ... }
+  }
 }
 ```
 
 ### 配置说明
 - **gameId**: 游戏唯一标识符，格式为 `"inhousegame:plinko"`
 - **status**: 游戏状态（`active` 启用，`disabled` 禁用）
-- **gameParameters**: 游戏核心参数
-  - **multiplierConfig**: 倍率配置，支持 3 种难度和 5 种行数组合
-    - 难度模式：
-      - `low`: 低风险（倍率范围小，中心槽位倍率较高）
-      - `medium`: 中等风险（平衡模式）
-      - `high`: 高风险（倍率范围大，边缘槽位倍率极高）
-    - 行数选项：8、9、10、11、12、13、14、15、16
-    - 倍率数组：对应每个槽位的倍率（从左到右）
-- **rtp**: 理论回报率（99%）
+- **oddsType**: 赔率类型，`table` 表示表驱动（赔率由 payoutTables 决定）
+- **gameParameters**: 游戏参数
+  - **defaultDifficulty**: 默认难度（`medium`）
+  - **defaultRows**: 默认行数（12）
+- **payoutTables**: 赔率表配置，支持 3 种难度和多种行数组合
+  - 难度模式：
+    - `low`: 低风险（倍率范围小，中心槽位倍率较高）
+    - `medium`: 中等风险（平衡模式）
+    - `high`: 高风险（倍率范围大，边缘槽位倍率极高）
+  - 行数选项：8、9、10、11、12、13、14、15、16
+  - 倍率数组：对应每个槽位的倍率（从左到右）
 
 ### 配置加载
 - **加载时机**: 服务器启动时，GameRegistry 自动从 `configs/games/` 目录加载所有 `.json` 配置文件
 - **使用方式**: 游戏服务通过 `gameRegistry.GetGame("inhousegame:plinko")` 获取配置，根据行数和难度查找对应的倍率数组
-- **配置验证**: Service 层和 Biz 层都会验证配置完整性，配置缺失时会 `panic()`
+- **配置验证**: Service 层和 Biz 层都会验证配置完整性，配置缺失时返回错误
 - **投注限额**: 从 `configs/currencies.json` 自动生成 BetInfo
 
 ### 倍率特征对比

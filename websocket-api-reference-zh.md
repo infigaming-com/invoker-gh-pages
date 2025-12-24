@@ -11,7 +11,7 @@ Invoker Server 的 WebSocket API 文档已按游戏类型拆分为多个独立�
 - **[WebSocket 通用接口](./common-websocket-api-zh.md)**
   - 连接管理（连接、认证、心跳）
   - 通用接口（LOGIN、GET_BALANCE、GET_GAME_CONFIG 等）
-  - 事件推送（BALANCE_UPDATE、BET_ACTIVITY 等）
+  - 事件推送（BET_ACTIVITY 等）
   - 错误处理
   - 金额格式说明
 
@@ -47,6 +47,14 @@ Invoker Server 的 WebSocket API 文档已按游戏类型拆分为多个独立�
   - 三种投注类型（龙/虎/和）
   - 5% 佣金机制
   - RTP: 97.1%
+
+#### 多人实时游戏（Multiplayer Real-time Games）
+
+- **[Crash 游戏 API](./crash-websocket-api-zh.md)**
+  - 多人实时倍率游戏
+  - 三个游戏阶段：投注、飞行、等待
+  - 支持实时兑现
+  - RTP: 97%
 
 #### 会话型游戏（Session Games）
 
@@ -153,11 +161,11 @@ const ws = new WebSocket('wss://dev.hicasino.xyz/v1/ws?token=YOUR_JWT_TOKEN');
 | Blackjack | 会话游戏 | ✅ 已实现 | [查看文档](./blackjack-websocket-api-zh.md) |
 | Limbo | 即时游戏 | ✅ 已实现 | [查看文档](./limbo-websocket-api-zh.md) |
 | Dragon Tiger | 即时游戏 | ✅ 已实现 | [查看文档](./dragontiger-websocket-api-zh.md) |
+| Crash | 多人实时游戏 | ✅ 已实现 | [查看文档](./crash-websocket-api-zh.md) |
 
 ## 相关文档
 
 - [系统架构](./architecture-zh.md)
-- [详细设计](./detailed-design-zh.md)
 - [序列图](./sequence-diagrams-zh.md)
 
 ## 联系支持
