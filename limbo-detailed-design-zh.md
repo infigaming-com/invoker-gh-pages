@@ -163,9 +163,8 @@ type BetResponse struct {
 ```
 
 **核心功能**：
-- WebSocket 消息处理：`HandleWebSocketMessage`
+- RPC 消息处理：通过 Centrifugo Proxy 处理游戏请求
 - 游戏配置提供：`GetGameConfig`
-- 事件分发：投注事件、结果事件、余额更新
 - 活动广播：投注活动实时推送
 
 ### 4.3 API 定义（api/game/v1/）

@@ -229,8 +229,7 @@ sequenceDiagram
 
 1. **WebSocket 协议** (主要用于实时游戏)
    - 认证方式：JWT令牌验证（连接时通过URL参数token传递）
-   - 传输格式：支持 Protocol Buffers 和 JSON 双格式
-   - 消息结构：使用 `WebSocketMessage` 作为统一消息容器
+   - 传输格式：JSON（通过 Centrifugo RPC 机制）
    - 用途：
      - 实时下注 (PlaceBetRequest/Response)
      - 游戏状态获取 (GetGameStateRequest/Response)
