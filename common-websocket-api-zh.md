@@ -204,6 +204,34 @@ const result = await centrifuge.rpc('common.getConfig', {
 | `maxBet` | number | 最大投注金额 |
 | `maxProfit` | number | 最大利润限制 |
 
+**响应**（Crash 游戏示例）：
+```json
+{
+    "gameId": "inhousegame:crash",
+    "config": {
+        "gameId": "inhousegame:crash",
+        "status": "active",
+        "rtp": 97,
+        "betInfo": [
+            {
+                "currency": "USDT",
+                "currencyType": "crypto",
+                "defaultBet": 1,
+                "minBet": 0.1,
+                "maxBet": 10000,
+                "maxProfit": 100000
+            }
+        ],
+        "gameParameters": {
+            "maxSlots": 3,
+            "bettingDuration": 5,
+            "waitingDuration": 3,
+            "maxMultiplier": 100
+        }
+    }
+}
+```
+
 ## 5. 频道订阅
 
 ### 5.1 公开频道
@@ -241,16 +269,15 @@ subscription.subscribe();
 {
     "activities": [
         {
+            "gameId": "inhousegame:dice",
+            "roundId": "123456789012345678",
             "maskedPlayerId": "pla***456",
             "maskedUsername": "Pla***456",
-            "gameId": "inhousegame:dice",
             "betAmount": "100.00000000",
+            "currency": "USDT",
             "multiplier": "2.00000000",
             "isWin": true,
-            "winAmount": "200.00000000",
-            "currency": "USDT",
-            "countryCode": "VN",
-            "timestamp": 1704067220
+            "winAmount": "100.00000000"
         }
     ]
 }
