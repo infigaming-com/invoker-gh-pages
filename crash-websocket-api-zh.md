@@ -58,47 +58,56 @@ const result = await centrifuge.rpc('common.getConfig', {
 | flying | 倍率上升，可兑现 | 随机 |
 | waiting | 显示结果 | 3-5 秒 |
 
-## crash.placeBet
+## placeBet
 
-在 betting 阶段下注。
+在 betting 阶段下注（单个槽位）。如需多槽位下注，需多次调用。
 
 ```javascript
-const result = await centrifuge.rpc('crash.placeBet', {
+const result = await centrifuge.rpc('placeBet', {
+    gameId: 'inhousegame:crash',
+    amount: '100.00',
     clientSeed: 'player_seed_123',
-    amount: '150.00',                     // 总金额（可选）
-    params: {
-        slots: [
-            { slotId: 1, amount: '100.00' },
-            { slotId: 2, amount: '50.00' }
-        ]
-    }
+    slotId: 1
 });
 ```
+
+**请求参数**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `gameId` | string | 是 | 固定为 `inhousegame:crash` |
+| `amount` | string | 是 | 投注金额 |
+| `clientSeed` | string | 是 | 客户端种子 |
+| `slotId` | number | 是 | 槽位 ID（0-2） |
 
 **响应**：
 
 ```json
 {
     "roundId": "123456789012345678",
-    "slots": [
-        { "slotId": 1, "amount": "100.00", "status": "active" },
-        { "slotId": 2, "amount": "50.00", "status": "active" }
-    ],
-    "balance": "9850.00"
+    "slotId": 1,
+    "amount": "100.00",
+    "status": "active"
 }
 ```
 
-## crash.cashOut
+## cashOut
 
-在 flying 阶段兑现。
+在 flying 阶段兑现指定槽位。
 
 ```javascript
-const result = await centrifuge.rpc('crash.cashOut', {
-    roundId: '123456789012345678',
-    slotId: 1,                            // 指定槽位，0 = 全部兑现
-    cashOutAll: false
+const result = await centrifuge.rpc('cashOut', {
+    gameId: 'inhousegame:crash',
+    slotId: 1
 });
 ```
+
+**请求参数**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `gameId` | string | 是 | 固定为 `inhousegame:crash` |
+| `slotId` | number | 是 | 要兑现的槽位 ID |
 
 **响应**：
 
@@ -108,30 +117,46 @@ const result = await centrifuge.rpc('crash.cashOut', {
         "slotId": 1,
         "betAmount": "100.00",
         "multiplier": 2.35,
-        "winAmount": "235.00",
-        "profit": "135.00"
-    }],
-    "balance": "10085.00"
+        "winAmount": "135.00"
+    }]
 }
 ```
 
-## crash.cancelBet
+## cancelBet
 
 在 betting 阶段取消投注。
 
 ```javascript
-const result = await centrifuge.rpc('crash.cancelBet', {
-    roundId: '123456789012345678',
-    slotId: 1                             // 0 = 取消全部
+const result = await centrifuge.rpc('cancelBet', {
+    gameId: 'inhousegame:crash',
+    slotId: 1
 });
 ```
 
-## crash.getState
+**请求参数**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `gameId` | string | 是 | 固定为 `inhousegame:crash` |
+| `slotId` | number | 是 | 要取消的槽位 ID |
+
+**响应**：
+
+```json
+{
+    "slotId": 1,
+    "refundAmount": "100.00"
+}
+```
+
+## getState
 
 获取当前游戏状态和用户投注信息。
 
 ```javascript
-const result = await centrifuge.rpc('crash.getState', {});
+const result = await centrifuge.rpc('getState', {
+    gameId: 'inhousegame:crash'
+});
 ```
 
 **响应**：
@@ -146,15 +171,11 @@ const result = await centrifuge.rpc('crash.getState', {});
     "totalPlayers": 45,
     "totalBets": "15230.00",
     "myBets": [
-        { "slotId": 1, "amount": "100.00", "status": "active" }
+        { "slotId": 1, "amount": "100.00", "status": "active" },
+        { "slotId": 2, "amount": "50.00", "status": "active" }
     ],
-    "pendingBets": [
-        { "slotId": 2, "amount": "50.00", "status": "pending" }
-    ],
-    "nextRound": {
-        "roundId": "123456789012345679",
-        "startsIn": 3000
-    }
+    "pendingBets": [],
+    "nextRound": null
 }
 ```
 
