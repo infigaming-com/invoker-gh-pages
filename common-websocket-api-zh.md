@@ -237,9 +237,44 @@ const result = await centrifuge.rpc('common.getConfig', {
 }
 ```
 
-## 5. 频道订阅
+## 5. 即时游戏延迟结算
 
-### 5.1 公开频道
+即时游戏（Instant Games）支持客户端控制是否延迟结算，用于播放动画等场景。
+
+### 5.1 机制说明
+
+通过请求中的 `immediateSettlement` 字段控制。支持延迟结算的游戏（如 Plinko）默认走延迟结算，客户端可通过 `immediateSettlement: true` 强制立即结算：
+
+| 游戏支持 | 客户端传值 | 结算方式 |
+|----------|-----------|---------|
+| 是（Plinko） | 不传（默认 `false`） | 延迟结算，需调用 `settleBet` |
+| 是（Plinko） | `immediateSettlement: true` | 立即结算 |
+| 否（Dice） | 任意值 | 立即结算（capability gate 拦截） |
+
+### 5.2 使用示例
+
+```javascript
+// 延迟结算（默认，播放动画后调 settleBet）
+const result = await centrifuge.rpc('plinko.placeBet', {
+    clientSeed: 'seed_123',
+    amount: '10.00',
+    params: { rows: 12, difficulty: 'medium' }
+});
+// 响应不包含 balance，播放动画后调用 settleBet
+
+// 立即结算（跳过动画）
+const result = await centrifuge.rpc('plinko.placeBet', {
+    clientSeed: 'seed_123',
+    amount: '10.00',
+    immediateSettlement: true,
+    params: { rows: 12, difficulty: 'medium' }
+});
+// 响应包含 balance，无需调用 settleBet
+```
+
+## 6. 频道订阅
+
+### 6.1 公开频道
 
 公开频道无需认证即可订阅：
 
@@ -260,7 +295,7 @@ subscription.on('publication', (ctx) => {
 subscription.subscribe();
 ```
 
-### 5.2 私有频道
+### 6.2 私有频道
 
 私有频道需要认证，在 Subscribe Proxy 中验证权限：
 
@@ -268,7 +303,7 @@ subscription.subscribe();
 |----------|------|
 | `user:{playerID}` | 用户专属消息 |
 
-### 5.3 投注活动数据格式
+### 6.3 投注活动数据格式
 
 ```json
 {
@@ -288,11 +323,11 @@ subscription.subscribe();
 }
 ```
 
-## 6. 错误码
+## 7. 错误码
 
 当 RPC 调用失败时，会抛出包含错误码的异常。
 
-### 6.1 错误处理示例
+### 7.1 错误处理示例
 
 ```javascript
 try {
@@ -304,7 +339,7 @@ try {
 }
 ```
 
-### 6.2 错误码列表
+### 7.2 错误码列表
 
 | 错误码 | 名称 | 说明 | 处理建议 |
 |--------|------|------|----------|
@@ -327,18 +362,18 @@ try {
 | 401 | CRASH_BET_NOT_FOUND | Crash 投注不存在 | 检查投注 ID |
 | 402 | CRASH_ALREADY_CASHED_OUT | Crash 已兑现 | - |
 
-## 7. 金额格式说明
+## 8. 金额格式说明
 
 为避免浮点数精度问题，所有金额使用字符串类型。
 
-### 7.1 格式要求
+### 8.1 格式要求
 
 - 使用字符串类型传输
 - 保留 8 位小数：`"123.45678901"`
 - 不使用科学计数法
 - 最小值：`"0.00000001"`
 
-### 7.2 涉及字段
+### 8.2 涉及字段
 
 - `amount` - 投注金额
 - `balance` - 余额
@@ -347,23 +382,23 @@ try {
 - `multiplier` - 倍数
 - `payout` - 支付金额
 
-### 7.3 试玩模式
+### 8.3 试玩模式
 
 将 `amount` 设为 `"0"` 或空字符串即可激活试玩模式：
 - 不扣除余额
 - 游戏逻辑完全相同
 - 适合了解游戏规则
 
-## 8. 连接管理
+## 9. 连接管理
 
-### 8.1 心跳机制
+### 9.1 心跳机制
 
 Centrifugo 自动管理心跳，无需手动发送。客户端库会自动：
 - 发送心跳保持连接
 - 检测连接状态
 - 自动重连（可配置）
 
-### 8.2 断线重连
+### 9.2 断线重连
 
 ```javascript
 const centrifuge = new Centrifuge(url, {
@@ -374,13 +409,13 @@ const centrifuge = new Centrifuge(url, {
 });
 ```
 
-### 8.3 断开连接
+### 9.3 断开连接
 
 ```javascript
 centrifuge.disconnect();
 ```
 
-## 9. 相关文档
+## 10. 相关文档
 
 ### 游戏专属 API 文档
 

@@ -1,10 +1,11 @@
 # Plinko 游戏 API
 
-球从顶部落下，经过钉子随机弹跳落入槽位。支持 8-16 行，三种难度（low/medium/high）。采用延迟结算机制。
+球从顶部落下，经过钉子随机弹跳落入槽位。支持 8-16 行，三种难度（low/medium/high）。支持客户端控制延迟结算（详见[通用文档 - 延迟结算](./common-websocket-api-zh.md#5-即时游戏延迟结算)）。
 
 ## plinko.placeBet
 
 ```javascript
+// 延迟结算模式（默认，播放动画后调 settleBet）
 const result = await centrifuge.rpc('plinko.placeBet', {
     clientSeed: 'player_seed_123',
     amount: '10.00',               // "0" 为试玩
@@ -12,6 +13,14 @@ const result = await centrifuge.rpc('plinko.placeBet', {
         rows: 12,                  // 行数 8-16
         difficulty: 'medium'       // low/medium/high
     }
+});
+
+// 立即结算模式（跳过动画）
+const result = await centrifuge.rpc('plinko.placeBet', {
+    clientSeed: 'player_seed_123',
+    amount: '10.00',
+    immediateSettlement: true,     // 强制立即结算
+    params: { rows: 12, difficulty: 'medium' }
 });
 ```
 
@@ -39,11 +48,12 @@ const result = await centrifuge.rpc('plinko.placeBet', {
 }
 ```
 
-**注意**：响应不包含 `balance`，需在动画播放完成后调用 `settleBet` 获取余额。
+- 延迟结算模式（默认）：响应不包含 `balance`，需调用 `settleBet`
+- 立即结算模式（`immediateSettlement: true`）：立即结算，无需调用 `settleBet`
 
 ## plinko.settleBet
 
-动画播放完成后调用此接口完成余额结算。
+仅在延迟结算模式下需要调用，动画播放完成后完成余额结算。
 
 ```javascript
 const result = await centrifuge.rpc('plinko.settleBet', {
