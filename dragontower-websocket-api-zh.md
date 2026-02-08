@@ -1,6 +1,6 @@
-# DragonTower 游戏 API
+# Dragon Tower 游戏 API
 
-爬塔游戏：每层闯关成功倍率递增，最多 9 层，可随时提现。支持五种难度。
+龙塔攀登：逐层向上攀登避开龙的位置，每成功一层倍率递增，可随时提现。支持五种难度，最高 9 层。
 
 ## dragontower.placeBet
 
@@ -21,21 +21,23 @@ const result = await centrifuge.rpc('dragontower.placeBet', {
 ```json
 {
     "roundId": "123456789012345678",
-    "status": "playing",
-    "currentLayer": 0,
-    "maxLayers": 9,
-    "difficulty": "medium",
-    "currentMultiplier": "1.00",
-    "nextMultiplier": "1.47",
-    "nextProbability": 0.6667,
-    "completedLayers": [],
-    "balance": "990.00000000"
+    "gameState": {
+        "roundId": "123456789012345678",
+        "status": "playing",
+        "betAmount": "10.00000000",
+        "difficulty": "medium",
+        "currentLayer": 0,
+        "maxLayers": 9,
+        "path": [],
+        "currentMultiplier": "1.00000000",
+        "nextMultiplier": "1.45230556"
+    }
 }
 ```
 
 ## dragontower.climb
 
-闯关下一层。
+攀登一层。
 
 ```javascript
 const result = await centrifuge.rpc('dragontower.climb', {
@@ -43,17 +45,19 @@ const result = await centrifuge.rpc('dragontower.climb', {
 });
 ```
 
-**响应（成功）**：
+**响应（生存）**：
 
 ```json
 {
     "survived": true,
-    "status": "playing",
-    "currentLayer": 1,
-    "currentMultiplier": "1.47",
-    "nextMultiplier": "2.21",
-    "nextProbability": 0.6667,
-    "completedLayers": [0]
+    "gameState": {
+        "status": "playing",
+        "currentLayer": 1,
+        "maxLayers": 9,
+        "path": [0],
+        "currentMultiplier": "1.45230556",
+        "nextMultiplier": "2.16633750"
+    }
 }
 ```
 
@@ -62,15 +66,41 @@ const result = await centrifuge.rpc('dragontower.climb', {
 ```json
 {
     "survived": false,
-    "status": "finished",
-    "currentMultiplier": "0.00",
-    "balance": "990.00000000"
+    "gameState": {
+        "status": "finished",
+        "currentMultiplier": "0.00000000"
+    },
+    "gameResult": {
+        "dragonPositions": [0],
+        "layersCompleted": 0,
+        "finalMultiplier": "0.00000000",
+        "payout": "0.00000000"
+    }
+}
+```
+
+**响应（到达顶层自动结算）**：
+
+```json
+{
+    "survived": true,
+    "gameState": {
+        "status": "finished",
+        "currentLayer": 9,
+        "path": [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    },
+    "gameResult": {
+        "dragonPositions": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        "layersCompleted": 9,
+        "finalMultiplier": "31.69702400",
+        "payout": "316.97024000"
+    }
 }
 ```
 
 ## dragontower.cashOut
 
-提现当前赢利（至少完成一层）。
+提现当前赢利（至少攀登一层）。
 
 ```javascript
 const result = await centrifuge.rpc('dragontower.cashOut', {
@@ -82,53 +112,117 @@ const result = await centrifuge.rpc('dragontower.cashOut', {
 
 ```json
 {
-    "status": "cashed_out",
-    "payout": "33.10000000",
-    "currentMultiplier": "3.31",
-    "completedLayers": [0, 1, 2],
-    "balance": "1023.10000000"
+    "payout": "14.52305560",
+    "gameState": {
+        "status": "cashed_out",
+        "currentLayer": 1,
+        "path": [0],
+        "currentMultiplier": "1.45230556",
+        "nextMultiplier": "2.16633750"
+    },
+    "result": {
+        "dragonPositions": [0],
+        "layersCompleted": 1,
+        "finalMultiplier": "1.45230556",
+        "payout": "14.52305560"
+    }
 }
 ```
 
-## dragontower.checkActive / dragontower.resume
+## dragontower.autoPlay
+
+自动攀登到指定目标层数（下注 + 攀登一次性完成）。
 
 ```javascript
-// 检查活跃游戏
-const active = await centrifuge.rpc('dragontower.checkActive', {});
-
-// 恢复游戏
-const state = await centrifuge.rpc('dragontower.resume', {
-    roundId: '123456789012345678'
+const result = await centrifuge.rpc('dragontower.autoPlay', {
+    betRequest: {
+        clientSeed: 'player_seed_123',
+        amount: '10.00',
+        params: {
+            difficulty: 'medium'
+        }
+    },
+    targetLayers: 5                   // 1-9
 });
 ```
 
-## 难度与倍率
-
-| 难度 | 每层成功率 | 最大倍率（9层） |
-|------|-----------|----------------|
-| Easy | 75% | 7.51x |
-| Medium | 66.7% | 19.68x |
-| Hard | 50% | 512x |
-| Expert | 33.3% | 19,683x |
-| Master | 25% | 262,144x |
-
-**Medium 难度倍率示例**：
-
-| 层数 | 1 | 2 | 3 | 4 | 5 | 9 |
-|-----|-----|-----|-----|-----|-----|------|
-| 倍率 | 1.47x | 2.21x | 3.31x | 4.97x | 7.45x | 19.68x |
-
-## 公平性验证
-
-`POST /v1/fairness/dragontower/verify`
+**响应（成功到达目标层）**：
 
 ```json
 {
-    "clientSeed": "player_seed_123",
-    "serverSeed": "revealed_server_seed",
-    "nonce": 1,
-    "difficulty": "medium"
+    "roundId": "123456789012345678",
+    "survived": true,
+    "layersCompleted": 5,
+    "payout": "70.24397000",
+    "gameResult": {
+        "dragonPositions": [0, 1, 2, 3, 4],
+        "layersCompleted": 5,
+        "finalMultiplier": "7.02439700",
+        "payout": "70.24397000"
+    }
 }
 ```
 
-返回：`{ "layerResults": [true, true, false, ...], "multipliers": [1.47, 2.21, ...] }`
+**响应（中途失败）**：
+
+```json
+{
+    "roundId": "123456789012345678",
+    "survived": false,
+    "layersCompleted": 3,
+    "payout": "0.00000000",
+    "gameResult": {
+        "dragonPositions": [0, 1, 2],
+        "layersCompleted": 3,
+        "finalMultiplier": "0.00000000",
+        "payout": "0.00000000"
+    }
+}
+```
+
+## dragontower.checkActive
+
+```javascript
+const active = await centrifuge.rpc('dragontower.checkActive', {});
+// { hasActiveGame: true, roundId: "...", gameState: {...} }
+```
+
+## 难度配置
+
+| 难度 | 列数 | 成功率 | 特点 |
+|------|------|--------|------|
+| Easy | 4 | 75% (3/4) | 低风险，倍率增长缓慢 |
+| Medium | 3 | 66.67% (2/3) | 中等风险，默认难度 |
+| Hard | 2 | 50% (1/2) | 高风险，倍率增长快 |
+| Expert | 3 | 33.33% (1/3) | 极高风险 |
+| Master | 4 | 25% (1/4) | 最高风险，倍率增长极快 |
+
+**Medium 难度倍率示例**：
+
+| 层数 | 1 | 2 | 3 | 5 | 7 | 9 |
+|-----|------|------|------|------|-------|-------|
+| 倍率 | 1.45x | 2.17x | 3.22x | 7.02x | 15.07x | 31.70x |
+
+## 赔率计算
+
+```
+有效RTP(n) = RTP × (1 - greedPenalty × (n / maxLayers)²)
+倍率(n) = 有效RTP(n) / 成功率^n
+```
+
+- **RTP**: 97%（配置可调）
+- **greedPenalty**: 0.15（层数越高，有效 RTP 越低）
+- **倍率精度**: 8 位小数
+
+## 公平性验证
+
+DragonTower 目前未提供独立的公平性验证 REST API。游戏结果可通过种子信息在客户端独立验证：
+
+```
+对于每一层 i（i = 0 到 maxLayers-1）：
+  1. 组合种子：seedStr = "serverSeed:clientSeed:nonce:i"
+  2. 计算哈希：hash = SHA256(seedStr)
+  3. 取前 8 位十六进制：hashFirst8 = hash[:8]
+  4. 转换为随机数：randomValue = parseInt(hashFirst8, 16) / 0x100000000
+  5. 判断结果：survived = randomValue < successRate
+```

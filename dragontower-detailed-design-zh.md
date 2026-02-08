@@ -1,150 +1,201 @@
-# DragonTower（龙之塔）游戏详细设计文档
+# DragonTower（龙塔）游戏详细设计文档 ✅ 已实现
 
-## 状态标记
-状态：✅ 已实现
+## 配置文件
+
+### 游戏配置 (`configs/games/dragontower.json`)
+```json
+{
+  "gameId": "inhousegame:dragontower",
+  "status": "active",
+  "oddsType": "formula",
+  "rtp": 97.0,
+  "gameParameters": {
+    "defaultDifficulty": "medium",
+    "greedPenalty": 0.15
+  }
+}
+```
+
+### 配置说明
+- **gameId**: 游戏唯一标识符，格式为 `"inhousegame:dragontower"`
+- **status**: 游戏状态（`active` 启用，`disabled` 禁用）
+- **oddsType**: 赔率类型，`formula` 表示公式驱动（赔率通过数学公式实时计算）
+- **rtp**: 基础理论回报率（97%），会被 GreedPenalty 动态调整
+- **gameParameters**: 游戏核心参数
+  - **defaultDifficulty**: 默认难度（`medium`）
+  - **greedPenalty**: 贪婪惩罚系数（0.15），层数越高有效 RTP 越低
+
+### 配置加载
+- **加载时机**: 服务器启动时，GameRegistry 自动从 `configs/games/` 目录加载所有 `.json` 配置文件
+- **使用方式**: 游戏服务通过 `gameRegistry.GetProtoConfig(operatorID, "inhousegame:dragontower")` 获取配置
+- **Operator 覆盖**: 支持 Operator 级别的 RTP 和 gameParameters 覆盖
+- **投注限额**: 从 `configs/currencies.json` 自动生成 BetInfo
 
 ## 游戏概述
 
-DragonTower（龙之塔）是一个单人会话型风险博弈游戏，玩家从塔底逐层向上闯关，每层进行概率判定。成功则进入下一层并获得更高倍率，失败则损失全部投注。玩家可在任意时刻选择兑现当前倍率。
+DragonTower 是一个单人会话型风险博弈游戏，玩家从塔底逐层向上攀登，每层进行概率判定。成功则进入下一层并获得更高倍率，失败则损失全部投注。玩家可在任意时刻选择兑现当前倍率。
 
 ## 游戏规则
 
 ### 基本玩法
 1. **选择配置**：
-   - 难度档位：Easy / Medium / Hard / Expert / Master（5档）
-   - 最高层数：固定9层
+   - 难度档位：Easy / Medium / Hard / Expert / Master（5 档）
+   - 最高层数：固定 9 层
    - 难度一旦选定，游戏过程中不可更改
 
 2. **游戏流程**：
    - 玩家下注并选择难度
-   - 从第0层（塔底）开始闯关
-   - 每层进行一次概率判定（伯努利试验）
+   - 从第 0 层（塔底）开始攀登
+   - 每层进行一次概率判定
    - 成功：进入下一层，倍率递增
    - 失败：游戏结束，损失全部投注
    - 可随时选择 Cash Out 兑现当前倍率
-   - 成功通过第9层获得最大奖励
+   - 成功通过第 9 层自动结算获得最大奖励
 
 3. **游戏状态**：
    - `ready` - 准备中
    - `playing` - 游戏进行中
-   - `finished` - 游戏结束（失败）
+   - `finished` - 游戏结束（失败或到达顶层）
    - `cashed_out` - 主动提现
 
 ### 难度配置
 
-| 难度 | 英文代码 | 单层成功率 | 描述 |
-|------|----------|------------|------|
-| 简单 | easy | 75% (3/4) | 适合新手，风险较低 |
-| 中等 | medium | 66.67% (2/3) | 平衡风险与收益 |
-| 困难 | hard | 50% (1/2) | 高风险高回报 |
-| 专家 | expert | 33.33% (1/3) | 极高风险 |
-| 大师 | master | 25% (1/4) | 最高风险，最高回报 |
+| 难度 | 代码 | 列数 | 单层成功率 | 描述 |
+|------|------|------|------------|------|
+| 简单 | easy | 4 | 75% (3/4) | 低风险，适合新手 |
+| 中等 | medium | 3 | 66.67% (2/3) | 平衡风险与收益 |
+| 困难 | hard | 2 | 50% (1/2) | 高风险高回报 |
+| 专家 | expert | 3 | 33.33% (1/3) | 极高风险 |
+| 大师 | master | 4 | 25% (1/4) | 最高风险，最高回报 |
 
-**注意**：单层成功率与层数无关，每层的边际成功率恒等于难度成功率 p
+单层成功率与层数无关，每层的边际成功率恒等于难度成功率 p。
 
 ## 赔率计算公式
 
 ### 核心算法
-```
-累计生存率: S(n) = p^n
-原始倍率: M_raw(n) = 0.98 / p^n
-显示倍率: M(n) = RoundHalfUp(M_raw(n), 2)
-兑现金额 = 下注金额 × M(n)
+
+DragonTower 使用公式驱动的赔率计算，引入 GreedPenalty 机制使有效 RTP 随层数递减：
+
+```go
+func (g *Game) GetEffectiveRTP(layer int) float64 {
+    normalizedLayer := float64(layer) / float64(g.MaxLayers)
+    return g.RTP * (1.0 - g.GreedPenalty * normalizedLayer * normalizedLayer)
+}
+
+func (g *Game) CalculateMultiplierForLayer(layer int) float64 {
+    if layer == 0 {
+        return 1.0
+    }
+    effectiveRTP := g.GetEffectiveRTP(layer)
+    return effectiveRTP / math.Pow(g.SuccessRate, float64(layer))
+}
 ```
 
 ### 关键参数
-- **RTP（理论回报率）**：98%
-- **倍率精度**：四舍五入到2位小数
-- **最高层数**：9层
+- **基础 RTP**: 97%（配置可调）
+- **GreedPenalty**: 0.15（配置可调）
+- **有效 RTP 公式**: `RTP × (1 - greedPenalty × (n / maxLayers)²)`
+- **倍率公式**: `有效RTP(n) / 成功率^n`
+- **倍率精度**: 8 位小数，无四舍五入
+- **最高层数**: 9 层
+
+### GreedPenalty 机制
+
+GreedPenalty 使层数越高的有效 RTP 越低，激励玩家适时提现：
+
+| 层数 | normalizedLayer | 有效 RTP |
+|------|----------------|----------|
+| 1 | 0.111 | 96.82% |
+| 3 | 0.333 | 95.38% |
+| 5 | 0.556 | 92.51% |
+| 7 | 0.778 | 88.20% |
+| 9 | 1.000 | 82.45% |
 
 ### 各难度倍率表
 
 #### Easy 难度 (p=0.75)
-| 层数 | 累计生存率 | 显示倍率 |
-|------|-----------|----------|
-| 1 | 0.75000 | 1.31 |
-| 2 | 0.56250 | 1.74 |
-| 3 | 0.42188 | 2.32 |
-| 4 | 0.31641 | 3.10 |
-| 5 | 0.23730 | 4.13 |
-| 6 | 0.17798 | 5.51 |
-| 7 | 0.13348 | 7.34 |
-| 8 | 0.10011 | 9.79 |
-| 9 | 0.07508 | 13.05 |
+| 层数 | 有效 RTP | 倍率 |
+|------|----------|------|
+| 1 | 96.82% | 1.29x |
+| 2 | 96.28% | 1.71x |
+| 3 | 95.38% | 2.26x |
+| 4 | 94.13% | 2.97x |
+| 5 | 92.51% | 3.90x |
+| 6 | 90.53% | 5.09x |
+| 7 | 88.20% | 6.61x |
+| 8 | 85.50% | 8.54x |
+| 9 | 82.45% | 10.98x |
 
 #### Medium 难度 (p≈0.6667)
-| 层数 | 累计生存率 | 显示倍率 |
-|------|-----------|----------|
-| 1 | 0.66667 | 1.47 |
-| 2 | 0.44444 | 2.21 |
-| 3 | 0.29630 | 3.31 |
-| 4 | 0.19753 | 4.96 |
-| 5 | 0.13169 | 7.44 |
-| 6 | 0.08779 | 11.16 |
-| 7 | 0.05853 | 16.74 |
-| 8 | 0.03902 | 25.12 |
-| 9 | 0.02601 | 37.67 |
+| 层数 | 有效 RTP | 倍率 |
+|------|----------|------|
+| 1 | 96.82% | 1.45x |
+| 2 | 96.28% | 2.17x |
+| 3 | 95.38% | 3.22x |
+| 4 | 94.13% | 4.76x |
+| 5 | 92.51% | 7.02x |
+| 6 | 90.53% | 10.31x |
+| 7 | 88.20% | 15.07x |
+| 8 | 85.50% | 21.91x |
+| 9 | 82.45% | 31.70x |
 
 #### Hard 难度 (p=0.5)
-| 层数 | 累计生存率 | 显示倍率 |
-|------|-----------|----------|
-| 1 | 0.50000 | 1.96 |
-| 2 | 0.25000 | 3.92 |
-| 3 | 0.12500 | 7.84 |
-| 4 | 0.06250 | 15.68 |
-| 5 | 0.03125 | 31.36 |
-| 6 | 0.01563 | 62.72 |
-| 7 | 0.00781 | 125.44 |
-| 8 | 0.00391 | 250.88 |
-| 9 | 0.00195 | 501.76 |
+| 层数 | 有效 RTP | 倍率 |
+|------|----------|------|
+| 1 | 96.82% | 1.94x |
+| 2 | 96.28% | 3.85x |
+| 3 | 95.38% | 7.63x |
+| 4 | 94.13% | 15.06x |
+| 5 | 92.51% | 29.60x |
+| 6 | 90.53% | 57.94x |
+| 7 | 88.20% | 112.89x |
+| 8 | 85.50% | 218.89x |
+| 9 | 82.45% | 422.19x |
 
 #### Expert 难度 (p≈0.3333)
-| 层数 | 累计生存率 | 显示倍率 |
-|------|-----------|----------|
-| 1 | 0.33333 | 2.94 |
-| 2 | 0.11111 | 8.82 |
-| 3 | 0.03704 | 26.46 |
-| 4 | 0.01235 | 79.38 |
-| 5 | 0.00412 | 238.14 |
-| 6 | 0.00137 | 714.42 |
-| 7 | 0.00046 | 2143.26 |
-| 8 | 0.00015 | 6429.78 |
-| 9 | 0.00005 | 19289.34 |
+| 层数 | 有效 RTP | 倍率 |
+|------|----------|------|
+| 1 | 96.82% | 2.90x |
+| 2 | 96.28% | 8.67x |
+| 3 | 95.38% | 25.75x |
+| 4 | 94.13% | 76.25x |
+| 5 | 92.51% | 224.82x |
+| 6 | 90.53% | 660.00x |
+| 7 | 88.20% | 1929.04x |
+| 8 | 85.50% | 5610.40x |
+| 9 | 82.45% | 16228.24x |
 
 #### Master 难度 (p=0.25)
-| 层数 | 累计生存率 | 显示倍率 |
-|------|-----------|----------|
-| 1 | 0.25000 | 3.92 |
-| 2 | 0.06250 | 15.68 |
-| 3 | 0.01563 | 62.72 |
-| 4 | 0.00391 | 250.88 |
-| 5 | 0.00098 | 1003.52 |
-| 6 | 0.00024 | 4014.08 |
-| 7 | 0.00006 | 16056.32 |
-| 8 | 0.00002 | 64225.28 |
-| 9 | 0.00000 | 256901.12 |
+| 层数 | 有效 RTP | 倍率 |
+|------|----------|------|
+| 1 | 96.82% | 3.87x |
+| 2 | 96.28% | 15.41x |
+| 3 | 95.38% | 61.05x |
+| 4 | 94.13% | 240.96x |
+| 5 | 92.51% | 947.30x |
+| 6 | 90.53% | 3708.36x |
+| 7 | 88.20% | 14449.59x |
+| 8 | 85.50% | 56035.71x |
+| 9 | 82.45% | 216102.41x |
 
 ## 可证明公平实现
 
 ### 随机数生成算法
 ```go
-func generateRandomForLayer(clientSeed, serverSeed string, nonce int64, layer int) float64 {
-    // 生成种子字符串
-    seedStr := fmt.Sprintf("%s:%s:%d:%d", clientSeed, serverSeed, nonce, layer)
+func generateRandomForLayer(serverSeed, clientSeed string, nonce int64, layer int) float64 {
+    seedStr := fmt.Sprintf("%s:%s:%d:%d", serverSeed, clientSeed, nonce, layer)
 
-    // 计算 SHA256 哈希
     hash := sha256.Sum256([]byte(seedStr))
     hashHex := hex.EncodeToString(hash[:])
+    hashFirst8 := hashHex[:8]
 
-    // 取前8位转换为整数
-    hashValue := new(big.Int)
-    hashValue.SetString(hashHex[:8], 16)
+    hashDecimal := new(big.Int)
+    hashDecimal.SetString(hashFirst8, 16)
 
-    // 映射到 [0,1) 区间
-    max32Bit := new(big.Int).SetInt64(0xFFFFFFFF)
-    result := new(big.Float).SetInt(hashValue)
-    divisor := new(big.Float).SetInt(max32Bit)
-    result.Quo(result, divisor)
+    // 除以 0x100000000 (2^32) 映射到 [0, 1)
+    divisor := new(big.Int).SetInt64(0x100000000)
+    result := new(big.Float).SetInt(hashDecimal)
+    result.Quo(result, new(big.Float).SetInt(divisor))
 
     floatResult, _ := result.Float64()
     return floatResult
@@ -155,13 +206,27 @@ func checkLayerResult(randomValue float64, successRate float64) bool {
 }
 ```
 
+### 预生成机制
+
+游戏开始时，使用种子一次性预生成所有 9 层的结果：
+
+```go
+func (g *Game) PreGenerateAllLayers() {
+    g.LayerResults = make([]bool, g.MaxLayers)
+    for i := 0; i < g.MaxLayers; i++ {
+        seedStr := BuildIndexedSeed(g.ServerSeed, g.ClientSeed, g.Nonce, i)
+        randomValue := Float64(seedStr)
+        g.LayerResults[i] = randomValue < g.SuccessRate
+    }
+}
+```
+
 ### 公平性保障
-- **客户端种子**：玩家提供（8-256字符），确保随机性不受服务器控制
-- **服务器种子**：游戏开始前生成，结束后公开供验证
-- **Nonce**：局内唯一标识
-- **层索引**：确保每层的随机值独立
-- **哈希公开**：游戏开始前公开服务器种子哈希值
-- **明文披露**：游戏结束后公开服务器种子明文
+- **种子顺序**: `serverSeed:clientSeed:nonce:layerIndex`
+- **客户端种子**: 玩家提供，确保随机性不受服务器控制
+- **服务器种子**: 游戏开始前生成，结束后公开供验证
+- **Nonce**: 递增计数器，确保每局唯一性
+- **层索引**: 确保每层的随机值独立
 
 ### 验证流程
 1. 玩家获取游戏记录（包含服务器种子明文）
@@ -169,207 +234,80 @@ func checkLayerResult(randomValue float64, successRate float64) bool {
 3. 对比随机值与成功率，验证每层判定结果
 4. 计算倍率并验证兑现金额
 
-## 游戏模式
+## 系统实现细节
 
-### 手动模式
-- **逐层操作**：玩家手动决定每层是继续闯关还是兑现
-- **实时显示**：
-  - 当前层数和成功率
-  - 当前倍率和可兑现金额
-  - 下一层的预期倍率
-- **即时反馈**：每层结果立即展示
-- **兑现控制**：玩家完全控制兑现时机
-
-### 自动模式
-- **目标设置**：预设自动兑现层数（1-9层）
-- **批量执行**：系统自动执行直到目标层或失败
-- **即时兑现**：达到目标层立即自动兑现
-- **中途停止**：玩家可随时切换回手动模式
-- **状态监控**：实时显示进度和统计信息
-
-## 状态管理
-
-### 游戏状态字段
+### 1. 服务架构
 ```go
-type DragonTowerGame struct {
-    RoundID           string      // 回合ID
-    BetAmount         float64     // 下注金额
-    Difficulty        Difficulty  // 难度档位
-    ClientSeed        string      // 客户端种子
-    ServerSeed        string      // 服务器种子
-    Nonce             int64       // Nonce
-    Status            GameStatus  // 游戏状态
-    CurrentLayer      int         // 当前层数 (0-9)
-    MaxLayers         int         // 最大层数（固定9）
-    CurrentMultiplier float64     // 当前倍率
-    CompletedLayers   []int       // 已完成层数列表
-    Survived          bool        // 是否存活
-    CashedOut         bool        // 是否已兑现
-    FinalPayout       float64     // 最终赔付
-    LayerResults      []bool      // 每层结果（预生成）
+// internal/service/games/dragontower/service.go
+type Service struct {
+    *games.SessionGameBase[*dragontower.Game, *v1.DragonTowerPlaceBetRequest]
+    gameRegistry *provider.GameRegistry
 }
 ```
 
-### 状态持久化
-- **会话存储**：将游戏状态序列化存储到 `GameSession` 表
-- **断线重连**：基于确定性种子，确保续局结果一致
-- **状态恢复**：包括难度、层数、倍率、已完成层数等
-
-## 业务规则
-
-### BR-001：游戏开始规则
-- 玩家必须输入有效下注金额
-- 玩家必须选择难度档位
-- 游戏开始后，下注金额和难度不可更改
-- 支持手动模式和自动模式
-- 同一玩家同一时刻仅允许一局进行
-
-### BR-002：难度与成功率规则
-- Easy：成功率 75%
-- Medium：成功率 66.67%
-- Hard：成功率 50%
-- Expert：成功率 33.33%
-- Master：成功率 25%
-- 单层成功率与层数无关，每层边际成功率恒等于 p
-
-### BR-003：层级与倍率计算规则
-- 累计生存率：S(n) = p^n
-- 原始倍率：M_raw(n) = 0.98 / p^n
-- 显示倍率：M(n) = RoundHalfUp(M_raw(n), 2)
-- 兑现金额 = 下注金额 × M(n)
-- 所有倍率显示和结算采用两位小数四舍五入
-
-### BR-004：闯关判定规则
-- 每层进行一次伯努利试验判定
-- 成功：进入下一层，倍率更新
-- 失败：游戏结束，损失全部下注金额
-- 玩家可在任意时刻选择 Cash Out 兑现
-- 最多可闯关9层
-
-### BR-005：兑现（Cash Out）规则
-- 手动模式：玩家任意时刻可点击 Cash Out
-- 自动模式：达到预设目标层自动兑现
-- 兑现金额 = 下注金额 × 当前层显示倍率 M(n)
-- 兑现操作不可撤销
-- 断线情况下以服务端接收时间为准
-
-### BR-006：断线重连规则
-- 状态持久化：服务端保存完整游戏状态
-- 确定性续局：每层结果由固定种子生成，断线不影响结果
-- 状态恢复：包括难度、层数、倍率、已完成层数等
-- 并发保护：同一局仅允许一个活动会话
-- 幂等处理：重复请求不会改变游戏状态
-
-## 技术实现要点
-
-### 1. 倍率精度处理
+### 2. 核心数据结构
 ```go
-func CalculateMultiplierForLayer(layer int, successRate float64) float64 {
-    rawMultiplier := 0.98 / math.Pow(successRate, float64(layer))
-    // 四舍五入到2位小数
-    return math.Round(rawMultiplier * 100) / 100
+type Game struct {
+    game.SessionGame
+
+    CurrentMultiplier float64
+    Difficulty        string
+    CurrentLayer      int
+    MaxLayers         int
+    CompletedLayers   []int
+    Survived          bool
+    CashedOut         bool
+    NextMultiplier    float64
+
+    SuccessRate       float64  // 从难度配置加载，不序列化
+    GreedPenalty      float64  // 从游戏配置加载，不序列化
+    LayerResults      []bool   // 预生成结果，不序列化
 }
 ```
 
-### 2. 预生成层级结果
-```go
-func (g *DragonTowerGame) preGenerateAllLayers() {
-    g.LayerResults = make([]bool, g.MaxLayers)
-    successRate := getDifficultySuccessRate(g.Difficulty)
+`game.SessionGame` 内嵌 `game.Game`，包含 `BetAmount`（decimal.Decimal）、`ClientSeed`、`ServerSeed`、`Nonce`、`FinalPayout`（decimal.Decimal）、`RTP`、`IsWin`、`IsDemo` 等基础字段。
 
-    for i := 0; i < g.MaxLayers; i++ {
-        randomValue := g.generateRandomForLayer(i)
-        g.LayerResults[i] = randomValue < successRate
-    }
-}
-```
+### 3. WebSocket 接口
 
-### 3. 闯关操作
-```go
-func (g *DragonTowerGame) ClimbLayer() (bool, error) {
-    if g.Status != StatusPlaying {
-        return false, fmt.Errorf("game not in playing state")
-    }
+#### 游戏控制
+- **placeBet**: 开始新游戏（选择难度和投注金额）
+- **climb**: 攀登一层
+- **cashOut**: 兑现
+- **autoPlay**: 自动攀登到目标层
 
-    if g.CurrentLayer >= g.MaxLayers {
-        return false, fmt.Errorf("already at maximum layers")
-    }
+#### 会话管理
+- **checkActive**: 检查活跃游戏
 
-    survived := g.LayerResults[g.CurrentLayer]
+### 4. 游戏模式
 
-    if survived {
-        g.CompletedLayers = append(g.CompletedLayers, g.CurrentLayer)
-        g.CurrentLayer++
-        g.CurrentMultiplier = g.CalculateMultiplierForLayer(g.CurrentLayer)
-        g.Survived = true
+#### 手动模式（climb）
+逐层操作，玩家手动决定每层是继续攀登还是兑现。
 
-        if g.CurrentLayer >= g.MaxLayers {
-            g.FinalPayout = g.BetAmount * g.CurrentMultiplier
-            g.Status = StatusFinished
-            g.CashedOut = true
-        }
-    } else {
-        g.Survived = false
-        g.FinalPayout = 0
-        g.Status = StatusFinished
-        g.CurrentMultiplier = 0
-    }
+#### 自动模式（autoPlay）
+一次性 RPC 调用完成下注 + 攀登到目标层。达到目标层自动 CashOut，中途失败立即结束。不支持中途停止。
 
-    return survived, nil
-}
-```
+### 5. 会话管理
+
+#### 状态持久化
+- 游戏状态序列化存储到 `GameSession` 表
+- 断线重连时通过 `Restore()` 恢复运行时数据（SuccessRate、LayerResults、NextMultiplier）
+
+#### 生命周期
+1. **创建**: PlaceBet 时创建新会话
+2. **持久化**: 每次 climb 后更新 session 数据
+3. **结束**: 失败/到达顶层/CashOut 时调用 ProcessGameEnd
 
 ## 与 ChickenRoad 的对比
 
 | 特性 | ChickenRoad | DragonTower |
 |------|-------------|-------------|
 | 游戏类型 | Session 游戏 | Session 游戏 |
-| 最大步数/层数 | 不同难度不同（10-19步） | 固定9层 |
-| 难度影响 | 最大步数 | 单层成功率 |
-| 核心操作 | MoveForward | ClimbLayer |
-| 倍率计算 | 基于生存率递归计算 | 直接公式 0.98/p^n |
-| 倍率精度 | 4位小数 | 2位小数（四舍五入） |
-| RTP | 98% | 98% |
+| 赔率类型 | table（表驱动） | formula（公式驱动） |
+| 最大步数/层数 | 不同难度不同 | 固定 9 层 |
+| 难度影响 | 最大步数和赔率表 | 单层成功率 |
+| 核心操作 | move | climb |
+| 倍率计算 | 查表 | 公式 + GreedPenalty |
+| RTP | 98% | 97%（有效 RTP 随层数递减） |
+| 倍率精度 | 8 位小数 | 8 位小数 |
+| 自动模式 | autoPlay | autoPlay |
 | 随机生成 | 预生成所有步骤 | 预生成所有层级 |
-
-## API 设计
-
-### WebSocket 消息类型
-- `PLACE_BET` - 下注开始游戏（通用适配器）
-- `DRAGONTOWER_CLIMB` - 尝试闯关下一层
-- `DRAGONTOWER_CASHOUT` - 兑现
-- `DRAGONTOWER_CHECK_ACTIVE` - 检查活跃游戏
-- `DRAGONTOWER_RESUME` - 恢复游戏
-- `DRAGONTOWER_GET_STATE` - 获取游戏状态
-
-### 响应数据格式
-```json
-{
-    "status": "playing",
-    "currentLayer": 3,
-    "maxLayers": 9,
-    "difficulty": "medium",
-    "currentMultiplier": "3.31",
-    "completedLayers": [0, 1, 2],
-    "survived": true,
-    "cashedOut": false,
-    "betAmount": "10.00000000",
-    "nextMultiplier": "4.96",
-    "nextProbability": 0.6667
-}
-```
-
-## 测试要点
-
-### 单元测试
-1. 倍率计算准确性验证
-2. 随机数生成确定性验证
-3. 可证明公平验证
-4. 状态恢复验证
-5. 边界条件测试
-
-### 集成测试
-1. 完整游戏流程测试
-2. 断线重连测试
-3. 并发安全测试
-4. 不同难度档位测试

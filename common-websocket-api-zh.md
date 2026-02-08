@@ -36,7 +36,8 @@ Invoker Server 使用 Centrifugo 作为实时通信层，通过 RPC 调用处理
 
 1. **创建会话**：通过 Provider API 创建游戏会话，获取 JWT token
 2. **连接 Centrifugo**：在连接时传递 token 进行认证
-3. **调用 RPC**：认证成功后即可调用游戏 RPC
+3. **获取游戏配置**：连接成功后，`connected` 事件的 `ctx.data.config` 包含游戏配置
+4. **调用 RPC**：认证成功后即可调用游戏 RPC
 
 ### 2.2 连接代码示例
 
@@ -63,6 +64,10 @@ const centrifuge = new Centrifuge(
 // 3. 监听连接事件
 centrifuge.on('connected', (ctx) => {
     console.log('已连接，Client ID:', ctx.client);
+    // ctx.data 包含游戏配置
+    if (ctx.data?.gameConfig) {
+        console.log('游戏配置:', ctx.data.config);
+    }
 });
 
 centrifuge.on('disconnected', (ctx) => {
@@ -159,6 +164,8 @@ const result = await centrifuge.rpc('common.getBalance', {});
 
 获取游戏配置信息，包括投注限额、RTP、游戏参数等。
 
+> **提示**：连接成功时 `ctx.data.config` 已包含游戏配置，通常无需单独调用此接口。
+
 **请求**：
 ```javascript
 const result = await centrifuge.rpc('common.getConfig', {
@@ -169,7 +176,6 @@ const result = await centrifuge.rpc('common.getConfig', {
 **响应**（Dice 游戏示例）：
 ```json
 {
-    "gameId": "inhousegame:dice",
     "config": {
         "gameId": "inhousegame:dice",
         "status": "active",
@@ -207,7 +213,6 @@ const result = await centrifuge.rpc('common.getConfig', {
 **响应**（Crash 游戏示例）：
 ```json
 {
-    "gameId": "inhousegame:crash",
     "config": {
         "gameId": "inhousegame:crash",
         "status": "active",

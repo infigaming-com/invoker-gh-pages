@@ -27,6 +27,7 @@ Invoker Server 使用 Centrifugo 作为实时通信层，通过 RPC 调用处理
 | Plinko | `plinko.placeBet` | 弹珠台游戏，支持 8-16 行配置 | [查看](./plinko-websocket-api-zh.md) |
 | Limbo | `limbo.placeBet` | 倍率预测游戏，目标倍率 1.01-1,000,000 | [查看](./limbo-websocket-api-zh.md) |
 | Dragon Tiger | `dragonTiger.placeBet` | 龙虎斗卡牌游戏，三种投注类型 | [查看](./dragontiger-websocket-api-zh.md) |
+| Roulette | `roulette.placeBet` | 欧式轮盘，13 种投注类型 | [查看](./roulette-websocket-api-zh.md) |
 
 #### 多人实时游戏（Multiplayer Real-time Games）
 
@@ -39,8 +40,9 @@ Invoker Server 使用 Centrifugo 作为实时通信层，通过 RPC 调用处理
 | 游戏 | RPC 方法 | 说明 | 文档 |
 |------|----------|------|------|
 | Mines | `mines.placeBet`、`mines.reveal`、`mines.cashOut` | 扫雷游戏 | [查看](./mines-websocket-api-zh.md) |
-| HiLo | `hilo.placeBet`、`hilo.makeChoice`、`hilo.cashOut` | 高低牌游戏 | [查看](./hilo-websocket-api-zh.md) |
+| HiLo | `hilo.placeBet`、`hilo.choice`、`hilo.cashOut` | 高低牌游戏 | [查看](./hilo-websocket-api-zh.md) |
 | Chicken Road | `chickenroad.placeBet`、`chickenroad.move`、`chickenroad.cashOut` | 闯关游戏 | [查看](./chickenroad-websocket-api-zh.md) |
+| Dragon Tower | `dragontower.placeBet`、`dragontower.climb`、`dragontower.cashOut` | 龙塔攀登游戏 | [查看](./dragontower-websocket-api-zh.md) |
 | Blackjack | `blackjack.placeBet`、`blackjack.hit`、`blackjack.stand` | 21 点游戏 | [查看](./blackjack-websocket-api-zh.md) |
 
 ## 快速开始
@@ -128,6 +130,7 @@ console.log('结果:', result.data);
 | Keno | `POST /v1/fairness/keno/verify` | 验证抽奖结果 |
 | Plinko | `POST /v1/fairness/plinko/verify` | 验证落球路径 |
 | ChickenRoad | `POST /v1/fairness/chickenroad/verify` | 验证每步结果 |
+| Roulette | `POST /v1/fairness/roulette/verify` | 验证中奖号码 |
 
 ## 实现状态
 
@@ -138,10 +141,12 @@ console.log('结果:', result.data);
 | Plinko | 即时游戏 | ✅ 已实现 | [查看文档](./plinko-websocket-api-zh.md) |
 | Limbo | 即时游戏 | ✅ 已实现 | [查看文档](./limbo-websocket-api-zh.md) |
 | Dragon Tiger | 即时游戏 | ✅ 已实现 | [查看文档](./dragontiger-websocket-api-zh.md) |
+| Roulette | 即时游戏 | ✅ 已实现 | [查看文档](./roulette-websocket-api-zh.md) |
 | Crash | 多人实时游戏 | ✅ 已实现 | [查看文档](./crash-websocket-api-zh.md) |
 | Mines | 会话游戏 | ✅ 已实现 | [查看文档](./mines-websocket-api-zh.md) |
 | HiLo | 会话游戏 | ✅ 已实现 | [查看文档](./hilo-websocket-api-zh.md) |
 | Chicken Road | 会话游戏 | ✅ 已实现 | [查看文档](./chickenroad-websocket-api-zh.md) |
+| Dragon Tower | 会话游戏 | ✅ 已实现 | [查看文档](./dragontower-websocket-api-zh.md) |
 | Blackjack | 会话游戏 | ✅ 已实现 | [查看文档](./blackjack-websocket-api-zh.md) |
 
 ## 相关文档

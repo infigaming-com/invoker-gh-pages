@@ -17,7 +17,7 @@
 
 ## 获取游戏配置
 
-使用通用接口 `common.getConfig` 获取 Crash 游戏配置：
+连接成功时 `ctx.data.config` 已包含游戏配置，也可使用 `common.getConfig` 接口获取：
 
 ```javascript
 const result = await centrifuge.rpc('common.getConfig', {
@@ -29,7 +29,6 @@ const result = await centrifuge.rpc('common.getConfig', {
 
 ```json
 {
-    "gameId": "inhousegame:crash",
     "config": {
         "gameId": "inhousegame:crash",
         "status": "active",
