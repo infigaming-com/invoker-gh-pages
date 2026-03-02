@@ -117,7 +117,17 @@ Crash 游戏支持玩家使用最多 3 个独立槽位进行投注：
 
 系统维护全局的游戏状态，包括当前游戏阶段、当前回合信息、所有活跃下注和当前倍率。这些状态在整个游戏过程中不断更新。
 
-### 7.2 并发安全
+### 7.2 历史倍率
+
+系统使用 Redis List 存储每个房间最近 20 个回合的 crash point 历史，用于在新用户订阅时展示 history bar：
+
+- **写入时机**：每轮 `transitionToWaiting` CAS 成功后，通过 LPUSH + LTRIM 写入
+- **读取时机**：`OnSubscribe` 时通过 LRANGE 读取全部历史
+- **Redis key**：`crash:room:{roomId}:history`（List 类型，TTL 1 小时，每轮刷新）
+- **存储格式**：proto 序列化的 `CrashHistoryItem`（`roundId` + `crashPoint`）
+- **排序**：最新回合在前（LPUSH 天然倒序）
+
+### 7.3 并发安全
 
 由于多个玩家可能同时操作，系统使用读写锁保护共享状态。读操作使用读锁，允许并发读取。写操作使用写锁，确保数据修改的原子性。
 

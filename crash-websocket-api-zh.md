@@ -258,7 +258,12 @@ sub.subscribe();
         }
     ],
     "totalPlayers": 45,
-    "totalBets": "15230.00"
+    "totalBets": "15230.00",
+    "history": [
+        { "roundId": "123456789012345677", "crashPoint": 3.45 },
+        { "roundId": "123456789012345676", "crashPoint": 1.23 },
+        { "roundId": "123456789012345675", "crashPoint": 15.67 }
+    ]
 }
 ```
 
@@ -272,6 +277,7 @@ sub.subscribe();
 | `players` | array | 当前回合玩家列表（昵称已脱敏） |
 | `totalPlayers` | number | 参与玩家总数 |
 | `totalBets` | string | 总投注金额 |
+| `history` | array | 最近 20 个回合的 crash point 历史（最新在前） |
 
 ## 广播事件
 
