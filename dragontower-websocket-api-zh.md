@@ -41,7 +41,8 @@ const result = await centrifuge.rpc('dragontower.placeBet', {
 
 ```javascript
 const result = await centrifuge.rpc('dragontower.climb', {
-    roundId: '123456789012345678'
+    roundId: '123456789012345678',
+    tileIndex: 1                      // 必填，选择的格子索引（0 ~ columns-1）
 });
 ```
 
@@ -63,6 +64,8 @@ const result = await centrifuge.rpc('dragontower.climb', {
 
 **响应（失败）**：
 
+游戏结束时返回 `gameResult`，其中 `dragonPositions` 为所有 9 层龙位置的扁平数组（每层 dragons 个位置）。
+
 ```json
 {
     "survived": false,
@@ -71,13 +74,15 @@ const result = await centrifuge.rpc('dragontower.climb', {
         "currentMultiplier": "0.00000000"
     },
     "gameResult": {
-        "dragonPositions": [0],
+        "dragonPositions": [1, 0, 2, 1, 0, 2, 1, 0, 2],
         "layersCompleted": 0,
         "finalMultiplier": "0.00000000",
         "payout": "0.00000000"
     }
 }
 ```
+
+> `dragonPositions` 说明（以 medium 难度为例，每层 1 条龙）：9 个元素依次表示第 0~8 层龙所在的 tile 索引。
 
 **响应（到达顶层自动结算）**：
 
@@ -87,10 +92,10 @@ const result = await centrifuge.rpc('dragontower.climb', {
     "gameState": {
         "status": "finished",
         "currentLayer": 9,
-        "path": [0, 1, 2, 3, 4, 5, 6, 7, 8]
+        "path": [0, 1, 0, 2, 1, 0, 2, 1, 0]
     },
     "gameResult": {
-        "dragonPositions": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        "dragonPositions": [1, 0, 2, 1, 0, 2, 1, 0, 2],
         "layersCompleted": 9,
         "finalMultiplier": "31.69702400",
         "payout": "316.97024000"
@@ -121,7 +126,7 @@ const result = await centrifuge.rpc('dragontower.cashOut', {
         "nextMultiplier": "2.16633750"
     },
     "result": {
-        "dragonPositions": [0],
+        "dragonPositions": [1, 0, 2, 1, 0, 2, 1, 0, 2],
         "layersCompleted": 1,
         "finalMultiplier": "1.45230556",
         "payout": "14.52305560"
@@ -155,7 +160,7 @@ const result = await centrifuge.rpc('dragontower.autoPlay', {
     "layersCompleted": 5,
     "payout": "70.24397000",
     "gameResult": {
-        "dragonPositions": [0, 1, 2, 3, 4],
+        "dragonPositions": [1, 0, 2, 1, 0, 2, 1, 0, 2],
         "layersCompleted": 5,
         "finalMultiplier": "7.02439700",
         "payout": "70.24397000"
@@ -172,7 +177,7 @@ const result = await centrifuge.rpc('dragontower.autoPlay', {
     "layersCompleted": 3,
     "payout": "0.00000000",
     "gameResult": {
-        "dragonPositions": [0, 1, 2],
+        "dragonPositions": [1, 0, 2, 1, 0, 2, 1, 0, 2],
         "layersCompleted": 3,
         "finalMultiplier": "0.00000000",
         "payout": "0.00000000"
@@ -189,13 +194,13 @@ const active = await centrifuge.rpc('dragontower.checkActive', {});
 
 ## 难度配置
 
-| 难度 | 列数 | 成功率 | 特点 |
-|------|------|--------|------|
-| Easy | 4 | 75% (3/4) | 低风险，倍率增长缓慢 |
-| Medium | 3 | 66.67% (2/3) | 中等风险，默认难度 |
-| Hard | 2 | 50% (1/2) | 高风险，倍率增长快 |
-| Expert | 3 | 33.33% (1/3) | 极高风险 |
-| Master | 4 | 25% (1/4) | 最高风险，倍率增长极快 |
+| 难度 | 列数 | 安全格 | 龙数 | 成功率 | 特点 |
+|------|------|--------|------|--------|------|
+| Easy | 4 | 3 | 1 | 75% (3/4) | 低风险，倍率增长缓慢 |
+| Medium | 3 | 2 | 1 | 66.67% (2/3) | 中等风险，默认难度 |
+| Hard | 2 | 1 | 1 | 50% (1/2) | 高风险，倍率增长快 |
+| Expert | 3 | 1 | 2 | 33.33% (1/3) | 极高风险 |
+| Master | 4 | 1 | 3 | 25% (1/4) | 最高风险，倍率增长极快 |
 
 **Medium 难度倍率示例**：
 
@@ -216,13 +221,18 @@ const active = await centrifuge.rpc('dragontower.checkActive', {});
 
 ## 公平性验证
 
-DragonTower 目前未提供独立的公平性验证 REST API。游戏结果可通过种子信息在客户端独立验证：
+游戏结束后返回 `dragonPositions`（所有层龙位置的扁平数组），可通过种子信息在客户端独立验证：
 
 ```
-对于每一层 i（i = 0 到 maxLayers-1）：
-  1. 组合种子：seedStr = "serverSeed:clientSeed:nonce:i"
-  2. 计算哈希：hash = SHA256(seedStr)
-  3. 取前 8 位十六进制：hashFirst8 = hash[:8]
-  4. 转换为随机数：randomValue = parseInt(hashFirst8, 16) / 0x100000000
-  5. 判断结果：survived = randomValue < successRate
+对于每一层 layerIndex（0 到 8）：
+  1. 初始化位置数组：positions = [0, 1, ..., columns-1]
+  2. Fisher-Yates shuffle：
+     for i = columns-1 downto 1:
+       seedStr = "serverSeed:clientSeed:nonce:layerIndex:i"
+       hash = SHA256(seedStr)
+       hashValue = parseInt(hash[:8], 16)
+       j = hashValue % (i + 1)
+       swap(positions[i], positions[j])
+  3. 取前 dragons 个作为龙位置，排序
+  4. 验证与返回的 dragonPositions 对应位置一致
 ```
