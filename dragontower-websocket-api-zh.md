@@ -147,9 +147,16 @@ const result = await centrifuge.rpc('dragontower.autoPlay', {
             difficulty: 'medium'
         }
     },
-    targetLayers: 5                   // 1-9
+    targetLayers: 5,                  // 1-9
+    tileIndices: [0, 1, 0, 1, 0]     // 可选，不传则服务端随机选择
 });
 ```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| betRequest | object | 是 | 下注请求（clientSeed、amount、params.difficulty） |
+| targetLayers | int32 | 是 | 目标层数（1-9） |
+| tileIndices | int32[] | 否 | 指定每层的格子索引，长度必须等于 targetLayers，每个值范围 [0, columns)。不传则服务端使用可证明公平的种子随机选择 |
 
 **响应（成功到达目标层）**：
 
