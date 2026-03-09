@@ -8,10 +8,10 @@
 
 | 房间 ID | RTP | 倍率范围 |
 |---------|-----|----------|
-| 0 | 99% | 1.1x - 10000x |
-| 1 | 98% | 1.1x - 10000x |
-| 2 | 97% | 1.1x - 10000x |
-| 3 | 96% | 1.1x - 10000x |
+| 0 | 99% | 1.0x - 10000x |
+| 1 | 98% | 1.0x - 10000x |
+| 2 | 97% | 1.0x - 10000x |
+| 3 | 96% | 1.0x - 10000x |
 
 玩家进入的房间由 Operator 配置决定，同一 Operator 下的所有玩家使用同一房间。
 
@@ -263,7 +263,9 @@ sub.subscribe();
         { "roundId": "123456789012345677", "crashPoint": 3.45 },
         { "roundId": "123456789012345676", "crashPoint": 1.23 },
         { "roundId": "123456789012345675", "crashPoint": 15.67 }
-    ]
+    ],
+    "seed": "a1b2c3d4e5f6...",
+    "chainHash": "f6e5d4c3b2a1..."
 }
 ```
 
@@ -278,6 +280,8 @@ sub.subscribe();
 | `totalPlayers` | number | 参与玩家总数 |
 | `totalBets` | string | 总投注金额 |
 | `history` | array | 最近 20 个回合的 crash point 历史（最新在前） |
+| `seed` | string | 当前 hash chain 的公开种子，用于验证崩溃点 |
+| `chainHash` | string | 当前 hash chain 的终端哈希，作为链的承诺 |
 
 ## 广播事件
 
@@ -320,7 +324,8 @@ flying 阶段持续推送（20fps）：
 ```json
 {
     "roundId": "123456789012345678",
-    "crashPoint": 3.45
+    "crashPoint": 3.45,
+    "gameHash": "abc123def456..."
 }
 ```
 
@@ -372,14 +377,21 @@ flying 阶段持续推送（20fps）：
 
 ## 公平性验证
 
+每轮结束时，回合结束事件中会揭示该轮的 `gameHash`。玩家可以通过以下方式验证：
+
+**1. 验证 Hash Chain 连续性**：`SHA256(本轮 gameHash) == 上一轮 gameHash`
+
+**2. 验证崩溃点**：
+
 `POST /v1/fairness/crash/verify`
 
 ```json
 {
-    "clientSeed": "player_seed_123",
-    "serverSeed": "revealed_server_seed",
-    "nonce": 1
+    "gameHash": "abc123def456...",
+    "seed": "a1b2c3d4e5f6..."
 }
 ```
 
 返回：`{ "crashPoint": 3.45 }`
+
+**验证公式**：`crashPoint = (2^32 / (HMAC_SHA256(gameHash, seed)[:8] + 1)) × RTP`
