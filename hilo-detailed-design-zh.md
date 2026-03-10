@@ -33,30 +33,52 @@ HiLo 是一个经典的卡牌预测游戏，玩家需要预测下一张牌比当
 ## 游戏规则
 
 ### 基本玩法
-1. **开始游戏**：
-   - 设置投注金额和客户端种子
-   - 系统发第一张牌
-   - 游戏进入 playing 状态
 
-2. **做出选择**：
+采用两阶段流程（Stake 模式）：先看牌再下注。
+
+1. **开始游戏（betting 阶段）**：
+   - 提供客户端种子，系统发第一张牌
+   - 游戏进入 `betting` 状态，玩家可查看牌面和赔率
+   - 可免费 skip 换牌，直到满意
+
+2. **下注（进入 playing 阶段）**：
+   - 玩家看到牌面后决定下注金额
+   - 系统扣款，游戏进入 `playing` 状态
+
+3. **做出选择**：
    - **higher**: 预测下张牌 >= 当前牌
    - **lower**: 预测下张牌 <= 当前牌
-   - **skip**: 跳过换牌（不影响倍率，最多 50 次）
+   - **skip**: 跳过换牌（不影响倍率，最多 52 次）
 
-3. **判定结果**：
+4. **判定结果**：
    - 猜对：倍率累积，可继续或提现
    - 猜错：游戏结束，失去投注
 
-4. **提现**：
+5. **提现**：
    - 至少猜对一次后可提现
    - 最终赔付 = 投注金额 × 累积倍率
+
+### 游戏流程图
+
+```
+startGame(clientSeed) → 发第一张牌（免费，StatusBetting）
+  ↓ (可选，可重复)
+choice(roundId, "skip") → 免费换牌
+  ↓
+placeBet(roundId, amount) → 聚合器扣款，转为 StatusPlaying
+  ↓ (可重复)
+choice(roundId, higher/lower/skip) → 预测
+  ↓
+cashOut(roundId) → 结算
+```
 
 ### 牌面值
 A=1, 2-10, J=11, Q=12, K=13
 
 ### 游戏状态
 - `ready` - 准备中
-- `playing` - 游戏进行中
+- `betting` - 等待下注（已发牌，可免费换牌）
+- `playing` - 游戏进行中（已下注）
 - `finished` - 游戏结束（猜错）
 - `cashed_out` - 主动提现
 
@@ -120,10 +142,11 @@ func (g *Game) calculateMultiplier(probability float64) float64 {
 - 概率公式包含相等情况，所以 Higher+Lower 概率之和 > 100%
 
 ### Skip 机制
-- 最大跳过次数: 50
+- 最大跳过次数: 52
 - 跳过不影响累积倍率
 - 跳过时换一张新牌，可用于等待更有利的牌面
-- 任何时候都可以跳过（不限于首次猜测前）
+- `betting` 阶段和 `playing` 阶段均可跳过
+- `betting` 阶段仅允许 skip（不允许 higher/lower）
 
 ## 可证明公平实现
 
@@ -171,6 +194,10 @@ type Service struct {
 }
 ```
 
+HiLo 不使用 `SessionGameBase.PlaceBet()` 的标准流程，而是自行实现两阶段流程：
+- `handleStartGame`: 创建 session，发第一张牌，不调用聚合器
+- `handlePlaceBet`: 恢复 session，调用聚合器扣款，转为 `playing` 状态
+
 ### 2. 核心数据结构
 ```go
 type Game struct {
@@ -194,17 +221,45 @@ type Game struct {
 
 `game.SessionGame` 内嵌 `game.Game`，包含 `BetAmount`（decimal.Decimal）、`ClientSeed`、`ServerSeed`、`Nonce`、`FinalPayout`（decimal.Decimal）、`RTP`、`IsWin`、`IsDemo` 等基础字段。
 
-### 3. WebSocket 接口
+### 3. 核心方法
+
+#### NewHiloGame
+```go
+func NewHiloGame(rtp float64, clientSeed, serverSeed string, nonce int64) *Game
+```
+创建游戏实例，`BetAmount` 初始为 `decimal.Zero`，`IsDemo` 初始为 `true`。预生成 20 张牌。
+
+#### StartGame
+```go
+func (g *Game) StartGame(roundID string)
+```
+发第一张牌，状态设为 `StatusBetting`。
+
+#### PlaceBet
+```go
+func (g *Game) PlaceBet(betAmount decimal.Decimal) error
+```
+验证 `StatusBetting` → 设置金额 → 更新 `IsDemo` → 转为 `StatusPlaying`。
+
+#### MakeChoice
+```go
+func (g *Game) MakeChoice(choice string) (bool, error)
+```
+- `StatusBetting` 阶段：仅允许 `skip`，higher/lower 返回错误
+- `StatusPlaying` 阶段：执行完整的猜测逻辑
+
+### 4. WebSocket 接口
 
 #### 游戏控制
-- **placeBet**: 开始新游戏
+- **startGame**: 创建游戏并发第一张牌（免费）
+- **placeBet**: 对已创建的游戏下注
 - **choice**: 做出选择（higher/lower/skip）
 - **cashOut**: 兑现
 
 #### 会话管理
 - **checkActive**: 检查活跃游戏
 
-### 4. NextMultiplier 逻辑
+### 5. NextMultiplier 逻辑
 
 `nextMultiplier` 字段取 Higher 和 Lower 中概率更高的那个选项对应的累积倍率：
 
@@ -223,7 +278,9 @@ func (g *Game) updateNextFields() {
 }
 ```
 
-### 5. 会话管理
+在 `StatusBetting` 和 `StatusPlaying` 状态下均会计算。
+
+### 6. 会话管理
 
 #### 状态恢复
 断线重连时，通过 `Restore()` 重新生成牌序并恢复运行时数据：
@@ -237,9 +294,11 @@ func (g *Game) Restore() {
 ```
 
 #### 生命周期
-1. **创建**: PlaceBet 时创建新会话，发第一张牌
-2. **持久化**: 每次 choice 后更新 session 数据
-3. **结束**: 猜错/CashOut 时调用 ProcessGameEnd
+1. **创建**: `startGame` 时创建新 session，发第一张牌，状态为 `betting`
+2. **下注**: `placeBet` 时调用聚合器扣款，状态转为 `playing`
+3. **持久化**: 每次 choice 后更新 session 数据
+4. **结束**: 猜错/CashOut 时调用 ProcessGameEnd
+5. **废弃 session**: `startGame` 时若存在 `betting` 状态的活跃 session，自动关闭（无金额，安全）
 
 ## 与 ChickenRoad/DragonTower 的对比
 
@@ -251,6 +310,7 @@ func (g *Game) Restore() {
 | 判定依据 | 牌面比较 | 随机值 < 存活率 | 随机值 < 成功率 |
 | 倍率计算 | RTP / 概率 | 查表 | 公式 + GreedPenalty |
 | RTP | 96% | 98% | 97% |
-| Skip 机制 | 有（最多 50 次） | 无 | 无 |
+| Skip 机制 | 有（最多 52 次） | 无 | 无 |
+| 两阶段下注 | 有（先看牌再下注） | 无 | 无 |
 | 倍率精度 | 单步 4 位，显示 8 位 | 8 位 | 8 位 |
 | 随机生成 | 动态批量（20 张/批） | 预生成所有步骤 | 预生成所有层级 |

@@ -2,13 +2,57 @@
 
 高低牌游戏：预测下一张牌比当前牌高还是低。每次猜对倍率累积，可随时提现。支持跳过换牌。
 
+## 游戏流程
+
+```
+startGame(clientSeed) → 发第一张牌（免费，StatusBetting）
+  ↓ (可选，可重复)
+choice(roundId, "skip") → 免费换牌
+  ↓
+placeBet(roundId, amount) → 扣款，转为 StatusPlaying
+  ↓ (可重复)
+choice(roundId, higher/lower/skip) → 预测
+  ↓
+cashOut(roundId) → 结算
+```
+
+## hilo.startGame
+
+创建新游戏，发第一张牌。玩家可先看牌再决定是否下注。
+
+```javascript
+const result = await centrifuge.rpc('hilo.startGame', {
+    clientSeed: 'player_seed_123'
+});
+```
+
+**响应**：
+
+```json
+{
+    "roundId": "123456789012345678",
+    "gameState": {
+        "roundId": "123456789012345678",
+        "status": "betting",
+        "betAmount": "0",
+        "currentRound": 0,
+        "currentCard": 7,
+        "cardHistory": [7],
+        "currentMultiplier": "1.00000000",
+        "nextMultiplier": "1.78290000",
+        "remainingSkips": 52,
+        "canCashout": false
+    }
+}
+```
+
 ## hilo.placeBet
 
-开始新游戏。
+对已创建的游戏下注，从 `betting` 转为 `playing` 状态。
 
 ```javascript
 const result = await centrifuge.rpc('hilo.placeBet', {
-    clientSeed: 'player_seed_123',
+    roundId: '123456789012345678',
     amount: '10.00'                   // "0" 为试玩
 });
 ```
@@ -27,7 +71,8 @@ const result = await centrifuge.rpc('hilo.placeBet', {
         "cardHistory": [7],
         "currentMultiplier": "1.00000000",
         "nextMultiplier": "1.78290000",
-        "remainingSkips": 50
+        "remainingSkips": 52,
+        "canCashout": false
     }
 }
 ```
@@ -43,9 +88,9 @@ const result = await centrifuge.rpc('hilo.choice', {
 });
 ```
 
-- **higher**：预测下张牌 >= 当前牌
-- **lower**：预测下张牌 <= 当前牌
-- **skip**：跳过换牌（不影响倍率，最多 50 次）
+- **higher**：预测下张牌 >= 当前牌（仅 `playing` 状态）
+- **lower**：预测下张牌 <= 当前牌（仅 `playing` 状态）
+- **skip**：跳过换牌（不影响倍率，最多 52 次，`betting` 和 `playing` 状态均可）
 
 **响应（猜对）**：
 
@@ -59,7 +104,8 @@ const result = await centrifuge.rpc('hilo.choice', {
         "cardHistory": [7, 10],
         "currentMultiplier": "1.78290000",
         "nextMultiplier": "5.56530000",
-        "remainingSkips": 50
+        "remainingSkips": 52,
+        "canCashout": true
     }
 }
 ```
@@ -73,7 +119,8 @@ const result = await centrifuge.rpc('hilo.choice', {
         "status": "finished",
         "currentCard": 3,
         "cardHistory": [7, 3],
-        "currentMultiplier": "0.00000000"
+        "currentMultiplier": "0.00000000",
+        "canCashout": false
     },
     "gameResult": {
         "cardSequence": [7, 3],
@@ -84,7 +131,25 @@ const result = await centrifuge.rpc('hilo.choice', {
 }
 ```
 
-**响应（跳过）**：
+**响应（跳过 - betting 阶段免费换牌）**：
+
+```json
+{
+    "guessCorrect": true,
+    "gameState": {
+        "status": "betting",
+        "currentRound": 0,
+        "currentCard": 11,
+        "cardHistory": [7, 11],
+        "currentMultiplier": "1.00000000",
+        "nextMultiplier": "1.13450000",
+        "remainingSkips": 51,
+        "canCashout": false
+    }
+}
+```
+
+**响应（跳过 - playing 阶段）**：
 
 ```json
 {
@@ -96,7 +161,8 @@ const result = await centrifuge.rpc('hilo.choice', {
         "cardHistory": [7, 11],
         "currentMultiplier": "1.00000000",
         "nextMultiplier": "1.13450000",
-        "remainingSkips": 49
+        "remainingSkips": 51,
+        "canCashout": false
     }
 }
 ```
@@ -123,7 +189,8 @@ const result = await centrifuge.rpc('hilo.cashOut', {
         "cardHistory": [7, 10],
         "currentMultiplier": "1.78290000",
         "nextMultiplier": "0.00000000",
-        "remainingSkips": 50
+        "remainingSkips": 52,
+        "canCashout": false
     },
     "result": {
         "cardSequence": [7, 10],
