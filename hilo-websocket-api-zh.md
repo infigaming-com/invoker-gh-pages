@@ -39,7 +39,8 @@ const result = await centrifuge.rpc('hilo.startGame', {
         "currentCard": 7,
         "cardHistory": [7],
         "currentMultiplier": "1.00000000",
-        "nextMultiplier": "1.78290000",
+        "nextHigherMultiplier": "1.78290000",
+        "nextLowerMultiplier": "1.78290000",
         "remainingSkips": 52,
         "canCashout": false
     }
@@ -70,7 +71,8 @@ const result = await centrifuge.rpc('hilo.placeBet', {
         "currentCard": 7,
         "cardHistory": [7],
         "currentMultiplier": "1.00000000",
-        "nextMultiplier": "1.78290000",
+        "nextHigherMultiplier": "1.78290000",
+        "nextLowerMultiplier": "1.78290000",
         "remainingSkips": 52,
         "canCashout": false
     }
@@ -103,7 +105,8 @@ const result = await centrifuge.rpc('hilo.choice', {
         "currentCard": 10,
         "cardHistory": [7, 10],
         "currentMultiplier": "1.78290000",
-        "nextMultiplier": "5.56530000",
+        "nextHigherMultiplier": "5.56530000",
+        "nextLowerMultiplier": "2.20900000",
         "remainingSkips": 52,
         "canCashout": true
     }
@@ -142,7 +145,8 @@ const result = await centrifuge.rpc('hilo.choice', {
         "currentCard": 11,
         "cardHistory": [7, 11],
         "currentMultiplier": "1.00000000",
-        "nextMultiplier": "1.13450000",
+        "nextHigherMultiplier": "4.16000000",
+        "nextLowerMultiplier": "1.13450000",
         "remainingSkips": 51,
         "canCashout": false
     }
@@ -160,7 +164,8 @@ const result = await centrifuge.rpc('hilo.choice', {
         "currentCard": 11,
         "cardHistory": [7, 11],
         "currentMultiplier": "1.00000000",
-        "nextMultiplier": "1.13450000",
+        "nextHigherMultiplier": "4.16000000",
+        "nextLowerMultiplier": "1.13450000",
         "remainingSkips": 51,
         "canCashout": false
     }
@@ -188,7 +193,8 @@ const result = await centrifuge.rpc('hilo.cashOut', {
         "currentCard": 10,
         "cardHistory": [7, 10],
         "currentMultiplier": "1.78290000",
-        "nextMultiplier": "0.00000000",
+        "nextHigherMultiplier": "0.00000000",
+        "nextLowerMultiplier": "0.00000000",
         "remainingSkips": 52,
         "canCashout": false
     },

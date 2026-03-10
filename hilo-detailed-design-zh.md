@@ -208,10 +208,10 @@ type Game struct {
     nextCardIndex int    // 不序列化
     cardSequence  []int  // 不序列化
 
-    CurrentMultiplier float64
-    MultiplierHistory []float64
-    NextMultiplier    float64   // 不序列化，由 updateNextFields 计算
-    NextProbability   float64   // 不序列化，由 updateNextFields 计算
+    CurrentMultiplier    float64
+    MultiplierHistory    []float64
+    NextHigherMultiplier float64   // 由 updateNextFields 计算
+    NextLowerMultiplier  float64   // 由 updateNextFields 计算
 
     CanCashout bool
     GuessCount int
@@ -261,24 +261,19 @@ func (g *Game) MakeChoice(choice string) (bool, error)
 
 ### 5. NextMultiplier 逻辑
 
-`nextMultiplier` 字段取 Higher 和 Lower 中概率更高的那个选项对应的累积倍率：
+分别返回 Higher 和 Lower 两个方向的累积倍率，客户端可同时展示两个选项的赔率：
 
 ```go
 func (g *Game) updateNextFields() {
     higherProb := g.calculateProbability("higher")
     lowerProb := g.calculateProbability("lower")
 
-    if higherProb >= lowerProb {
-        g.NextProbability = higherProb
-        g.NextMultiplier = g.CurrentMultiplier * g.calculateMultiplier(higherProb)
-    } else {
-        g.NextProbability = lowerProb
-        g.NextMultiplier = g.CurrentMultiplier * g.calculateMultiplier(lowerProb)
-    }
+    g.NextHigherMultiplier = g.CurrentMultiplier * g.calculateMultiplier(higherProb)
+    g.NextLowerMultiplier = g.CurrentMultiplier * g.calculateMultiplier(lowerProb)
 }
 ```
 
-在 `StatusBetting` 和 `StatusPlaying` 状态下均会计算。
+在 `StatusBetting` 和 `StatusPlaying` 状态下均会计算，游戏结束后两个值均为 0。
 
 ### 6. 会话管理
 
