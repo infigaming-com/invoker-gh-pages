@@ -808,10 +808,16 @@ type IGameHandler interface {
 
 - [Dice（骰子）游戏详细设计](./dice-detailed-design-zh.md)
 - [Keno（基诺）游戏详细设计](./keno-detailed-design-zh.md)
-- [HiLo（高低牌）游戏详细设计](./hilo-detailed-design-zh.md)
-- [Mines（扫雷）游戏详细设计](./mines-detailed-design-zh.md)
+- [Limbo（目标倍率）游戏详细设计](./limbo-detailed-design-zh.md)
 - [Plinko（弹珠台）游戏详细设计](./plinko-detailed-design-zh.md)
+- [Dragon Tiger（龙虎斗）游戏详细设计](./dragontiger-detailed-design-zh.md)
+- [Roulette（轮盘）游戏详细设计](./roulette-detailed-design-zh.md)
+- [Crash（崩溃）游戏详细设计](./crash-detailed-design-zh.md)
+- [Mines（扫雷）游戏详细设计](./mines-detailed-design-zh.md)
+- [HiLo（高低牌）游戏详细设计](./hilo-detailed-design-zh.md)
 - [ChickenRoad（小鸡过马路）游戏详细设计](./chickenroad-detailed-design-zh.md)
+- [Dragon Tower（龙塔）游戏详细设计](./dragontower-detailed-design-zh.md)
+- [Blackjack（21点）游戏详细设计](./blackjack-detailed-design-zh.md)
 
 ---
 

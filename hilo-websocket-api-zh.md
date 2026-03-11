@@ -41,7 +41,7 @@ const result = await centrifuge.rpc('hilo.startGame', {
         "currentMultiplier": "1.00000000",
         "nextHigherMultiplier": "1.78290000",
         "nextLowerMultiplier": "1.78290000",
-        "remainingSkips": 52,
+
         "canCashout": false
     }
 }
@@ -73,7 +73,7 @@ const result = await centrifuge.rpc('hilo.placeBet', {
         "currentMultiplier": "1.00000000",
         "nextHigherMultiplier": "1.78290000",
         "nextLowerMultiplier": "1.78290000",
-        "remainingSkips": 52,
+
         "canCashout": false
     }
 }
@@ -92,7 +92,7 @@ const result = await centrifuge.rpc('hilo.choice', {
 
 - **higher**：预测下张牌 >= 当前牌（仅 `playing` 状态）
 - **lower**：预测下张牌 <= 当前牌（仅 `playing` 状态）
-- **skip**：跳过换牌（不影响倍率，最多 52 次，`betting` 和 `playing` 状态均可）
+- **skip**：跳过换牌（不影响倍率，`betting` 和 `playing` 状态均可）
 
 **响应（猜对）**：
 
@@ -107,7 +107,7 @@ const result = await centrifuge.rpc('hilo.choice', {
         "currentMultiplier": "1.78290000",
         "nextHigherMultiplier": "5.56530000",
         "nextLowerMultiplier": "2.20900000",
-        "remainingSkips": 52,
+
         "canCashout": true
     }
 }
@@ -147,7 +147,7 @@ const result = await centrifuge.rpc('hilo.choice', {
         "currentMultiplier": "1.00000000",
         "nextHigherMultiplier": "4.16000000",
         "nextLowerMultiplier": "1.13450000",
-        "remainingSkips": 51,
+
         "canCashout": false
     }
 }
@@ -166,7 +166,7 @@ const result = await centrifuge.rpc('hilo.choice', {
         "currentMultiplier": "1.00000000",
         "nextHigherMultiplier": "4.16000000",
         "nextLowerMultiplier": "1.13450000",
-        "remainingSkips": 51,
+
         "canCashout": false
     }
 }
@@ -195,7 +195,7 @@ const result = await centrifuge.rpc('hilo.cashOut', {
         "currentMultiplier": "1.78290000",
         "nextHigherMultiplier": "0.00000000",
         "nextLowerMultiplier": "0.00000000",
-        "remainingSkips": 52,
+
         "canCashout": false
     },
     "result": {
