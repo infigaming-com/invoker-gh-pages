@@ -126,11 +126,13 @@ console.log('结果:', result.data);
 | 游戏 | 端点 | 说明 |
 |------|------|------|
 | Dice | `POST /v1/fairness/dice/verify` | 验证骰子结果 |
-| Mines | `POST /v1/fairness/mines/verify` | 验证地雷位置 |
 | Keno | `POST /v1/fairness/keno/verify` | 验证抽奖结果 |
 | Plinko | `POST /v1/fairness/plinko/verify` | 验证落球路径 |
-| ChickenRoad | `POST /v1/fairness/chickenroad/verify` | 验证每步结果 |
+| Dragon Tiger | `POST /v1/fairness/dragontiger/verify` | 验证龙虎结果 |
 | Roulette | `POST /v1/fairness/roulette/verify` | 验证中奖号码 |
+| Crash | `POST /v1/fairness/crash/verify` | 验证崩溃点 |
+| Mines | `POST /v1/fairness/mines/verify` | 验证地雷位置 |
+| ChickenRoad | `POST /v1/fairness/chickenroad/verify` | 验证每步结果 |
 
 ## 实现状态
 
